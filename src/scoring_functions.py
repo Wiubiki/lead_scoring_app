@@ -110,4 +110,16 @@ def country_score(country):
 # ICP group score function
 def icp_score(icp_group):
     return 1 if icp_group == 1 else (0.5 if icp_group == 2 else 0)
+    
+    
+# Assign Lead Class based in the following criteria
+def assign_lead_class(total_score):
+    if total_score > 7:
+        return 1
+    elif 7 >= total_score >= 5:
+        return 2
+    elif 5 > total_score >= 3:
+        return 3
+    return 4
+    
 
