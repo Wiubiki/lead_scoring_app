@@ -55,13 +55,13 @@ A streamlined and interactive tool for evaluating and visualizing lead scoring m
    ```
    
  2. Upload Data:
-  - Upload the `dreamclassAccounts.csv` and `googleanalytics_data.csv` files.
+    - Upload the `dreamclassAccounts.csv` and `googleanalytics_data.csv` files.
   
  3. Run Scoring:
-  - Use the "Run Scoring" button to process the uploaded data.
+    - Use the "Run Scoring" button to process the uploaded data.
   
  4. View Results:
-  - Navigate through the sidebar to filter by date and view results, including visualizations of lead distributions.
+    - Navigate through the sidebar to filter by date and view results, including visualizations of lead distributions.
 
 
 ---
@@ -69,10 +69,10 @@ A streamlined and interactive tool for evaluating and visualizing lead scoring m
 ## **Folder Structure**
 
  - src/:
-  - `app.py`: Main Streamlit application.
-  - `lead_scoring_tool.py`: Lead scoring logic.
-  - `scoring_functions.py`: Contains scoring functions.
-  - `validation.py`: Validates and compares customer and lead profiles.
+   - `app.py`: Main Streamlit application.
+   - `lead_scoring_tool.py`: Lead scoring logic.
+   - `scoring_functions.py`: Contains scoring functions.
+   - `validation.py`: Validates and compares customer and lead profiles.
  - `input_files/`: Directory for uploading data files.
  - `output_files/`: Stores output files like `master_file.csv` and visualization data.
  
