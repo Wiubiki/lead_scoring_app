@@ -152,12 +152,33 @@ elif section == "View Results":
 elif section == "Generate Summary Reports":
     st.header("Generate Summary Reports")
 
-    start_date = st.date_input("Start Date")
-    end_date = st.date_input("End Date")
+    # Controls Section
+    st.subheader("Controls")
 
-    if start_date and end_date and scored_data is not None:
-        # Call a function to generate summary reports based on the date range
-        st.write("Summary report generation coming soon.")
-    else:
-        st.info("Please ensure scoring is complete and select a date range.")
+    # Date Range Selection
+    start_date = st.date_input("Start Date", pd.to_datetime("2024-01-01"))
+    end_date = st.date_input("End Date", pd.to_datetime("2024-12-31"))
+
+    if start_date > end_date:
+        st.error("Start date cannot be after end date.")
+
+    # Dimension Mapping
+    dimension_mapping = {
+        "Source/Medium": "First user source / medium",
+        "Campaign": "First user campaign"
+    }
+
+    # Dimension Selection
+    st.write("**Choose dimensions for grouping:**")
+    selected_dimensions = st.multiselect(
+        "Group by",
+        options=list(dimension_mapping.keys()),  # Display names
+        default=["Source/Medium"]
+    )
+
+    if not selected_dimensions:
+        st.warning("Please select at least one dimension for grouping.")
+
+    # Translate display names to actual column names
+    grouping_columns = [dimension_mapping[dim] for dim in selected_dimensions]
 

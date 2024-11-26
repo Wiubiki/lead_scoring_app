@@ -2,78 +2,71 @@
 
 import pandas as pd
 
-# Load the master file
-master_file_path = "output_files/output_master_file.csv"
-master_data = pd.read_csv(master_file_path, parse_dates=['createdAt'], date_format='%d/%m/%Y')
+def generate_summary(data, start_date, end_date, dimensions):
+    """
+    Generate a summary report grouped by specified dimensions for a given date range.
 
-print("Columns in master_data:", master_data.columns)
+    Args:
+        data (pd.DataFrame): Input dataset containing lead scoring results.
+        start_date (str): Start date in 'YYYY-MM-DD' format.
+        end_date (str): End date in 'YYYY-MM-DD' format.
+        dimensions (list): List of dimensions to group by.
 
-# Prompt the user for start and end dates
-start_date = pd.to_datetime(input("Enter the start date (YYYY-MM-DD): "))
-end_date = pd.to_datetime(input("Enter the end date (YYYY-MM-DD): "))
+    Returns:
+        pd.DataFrame: Summary DataFrame with calculated metrics.
+    """
+    # Filter data based on date range
+    filtered_data = data[
+        (data['createdAt'] >= pd.to_datetime(start_date)) &
+        (data['createdAt'] <= pd.to_datetime(end_date))
+    ]
 
-# Filter the data based on the createdAt column
-filtered_data = master_data[(master_data['createdAt'] >= start_date) & (master_data['createdAt'] <= end_date)]
+    # Group by specified dimensions
+    grouped = filtered_data.groupby(dimensions).agg(
+        total_leads=('lead_class', 'size'),
+        avg_total_score=('total_score', 'mean')
+    )
 
-# Define a function to calculate both count and percentage for each lead class
-def lead_class_summary(group):
-    total = group.size
-    class_counts = group.value_counts().reindex([1, 2, 3, 4], fill_value=0)
-    class_distribution = class_counts / total
-    return pd.Series({
-        'lead_class_1_count': class_counts[1],
-        'lead_class_2_count': class_counts[2],
-        'lead_class_3_count': class_counts[3],
-        'lead_class_4_count': class_counts[4],
-        'lead_class_1_percentage': class_distribution[1],
-        'lead_class_2_percentage': class_distribution[2],
-        'lead_class_3_percentage': class_distribution[3],
-        'lead_class_4_percentage': class_distribution[4]
-    })
+    # Calculate lead class distribution
+    lead_class_data = filtered_data.groupby(dimensions)['lead_class'].value_counts().unstack(fill_value=0)
+    lead_class_percentages = lead_class_data.div(lead_class_data.sum(axis=1), axis=0)
 
+    # Combine into a single summary
+    summary = grouped.copy()
+    for lead_class in [1, 2, 3, 4]:
+        summary[f'class_{lead_class}_count'] = lead_class_data.get(lead_class, 0)
+        summary[f'class_{lead_class}_percent'] = lead_class_percentages.get(lead_class, 0)
 
-# Summary by Source/Medium
-summary_source_medium = filtered_data.groupby('First user source / medium').agg(
-    total_leads=('lead_class', 'size'),
-    avg_total_score=('total_score', 'mean'),
-    **{
-        'lead_class_1_count': ('lead_class', lambda x: (x == 1).sum()),
-        'lead_class_2_count': ('lead_class', lambda x: (x == 2).sum()),
-        'lead_class_3_count': ('lead_class', lambda x: (x == 3).sum()),
-        'lead_class_4_count': ('lead_class', lambda x: (x == 4).sum()),
-        'lead_class_1_percentage': ('lead_class', lambda x: (x == 1).mean()),
-        'lead_class_2_percentage': ('lead_class', lambda x: (x == 2).mean()),
-        'lead_class_3_percentage': ('lead_class', lambda x: (x == 3).mean()),
-        'lead_class_4_percentage': ('lead_class', lambda x: (x == 4).mean())
-    }
-).reset_index()
+    return summary.reset_index()
 
 
-# Summary by Source/Medium and Campaign
-summary_source_medium_campaign = filtered_data.groupby(['First user source / medium', 'First user campaign']).agg(
-    total_leads=('lead_class', 'size'),
-    avg_total_score=('total_score', 'mean'),
-    **{
-        'lead_class_1_count': ('lead_class', lambda x: (x == 1).sum()),
-        'lead_class_2_count': ('lead_class', lambda x: (x == 2).sum()),
-        'lead_class_3_count': ('lead_class', lambda x: (x == 3).sum()),
-        'lead_class_4_count': ('lead_class', lambda x: (x == 4).sum()),
-        'lead_class_1_percentage': ('lead_class', lambda x: (x == 1).mean()),
-        'lead_class_2_percentage': ('lead_class', lambda x: (x == 2).mean()),
-        'lead_class_3_percentage': ('lead_class', lambda x: (x == 3).mean()),
-        'lead_class_4_percentage': ('lead_class', lambda x: (x == 4).mean())
-    }
-).reset_index()
+# MAIN EXECUTION
+if __name__ == "__main__":
+    # Load the master file
+    master_file_path = "output_files/output_master_file.csv"
+    master_data = pd.read_csv(master_file_path, parse_dates=['createdAt'], dayfirst=True)
 
 
-# Convert start and end dates to strings for filename
-start_date_str = start_date.strftime('%Y%m%d')
-end_date_str = end_date.strftime('%Y%m%d')
+    print("Columns in master_data:", master_data.columns)
 
-# Save the summary reports with dynamic filenames based on date range
-summary_source_medium.to_csv(f"output_files/summary_source_medium_{start_date_str}_to_{end_date_str}.csv", index=False)
-summary_source_medium_campaign.to_csv(f"output_files/summary_source_medium_campaign_{start_date_str}_to_{end_date_str}.csv", index=False)
-
-print(f"Summary reports generated and saved to output_files/ as summary_source_medium_{start_date_str}_to_{end_date_str}.csv and summary_source_medium_campaign_{start_date_str}_to_{end_date_str}.csv")
+    # Prompt the user for start and end dates in the same format as the data
+    start_date = pd.to_datetime(input("Enter the start date (DD/MM/YYYY): "), format='%d/%m/%Y')
+    end_date = pd.to_datetime(input("Enter the end date (DD/MM/YYYY): "), format='%d/%m/%Y')
 
 
+    # Prompt the user for dimensions to group by
+    dimensions_input = input("Enter dimensions to group by, separated by commas (e.g., 'First user source / medium,First user campaign'): ")
+    dimensions = [dim.strip() for dim in dimensions_input.split(',')]
+
+    # Generate the summary
+    summary = generate_summary(master_data, start_date, end_date, dimensions)
+
+    # Convert start and end dates to strings for filenames
+    start_date_str = start_date.strftime('%Y%m%d')
+    end_date_str = end_date.strftime('%Y%m%d')
+
+    # Save the summary report
+    output_file_path = f"output_files/summary_{'_'.join(dimensions)}_{start_date_str}_to_{end_date_str}.csv"
+    summary.to_csv(output_file_path, index=False)
+
+    print(f"Summary report generated and saved to {output_file_path}")
