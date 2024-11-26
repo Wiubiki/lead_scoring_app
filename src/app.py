@@ -58,7 +58,8 @@ elif section == "View Results":
         scored_data = st.session_state["scored_data"]
 
         # Convert `createdAt` to datetime if it isn't already
-        scored_data["createdAt"] = pd.to_datetime(scored_data["createdAt"], errors='coerce')
+        scored_data["createdAt"] = pd.to_datetime(scored_data["createdAt"], format="%d/%m/%Y", errors="coerce")
+
 
         # Filtering options
         st.subheader("Filter Results")
@@ -113,12 +114,18 @@ elif section == "View Results":
 
         # Pie Chart Visualization
         st.subheader("Lead Class Distribution")
+        
+        # Function to format the autopct text
+        def autopct_format(pct, all_values):
+            absolute = int(round(pct / 100. * sum(all_values)))
+            return f"{pct:.1f}%\n({absolute})"  # Show percentage and count
 
+        # Generate Pie Chart
         fig, ax = plt.subplots()
         ax.pie(
             lead_class_percentages,
             labels=[f"Class {int(cls)}" for cls in lead_class_counts.index],
-            autopct="%1.1f%%",
+            autopct=lambda pct: autopct_format(pct, lead_class_counts),  # Custom formatting
             startangle=90,
             colors=plt.cm.Paired.colors[:len(lead_class_counts)]
         )
