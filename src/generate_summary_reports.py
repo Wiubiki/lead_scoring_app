@@ -31,32 +31,44 @@ def generate_summary(data, start_date, end_date, dimensions):
     lead_class_data = filtered_data.groupby(dimensions)['lead_class'].value_counts().unstack(fill_value=0)
     lead_class_percentages = lead_class_data.div(lead_class_data.sum(axis=1), axis=0)
 
-    # Combine into a single summary
-    summary = grouped.copy()
+    # Combine counts and percentages into the summary
     for lead_class in [1, 2, 3, 4]:
-        summary[f'class_{lead_class}_count'] = lead_class_data.get(lead_class, 0)
-        summary[f'class_{lead_class}_percent'] = lead_class_percentages.get(lead_class, 0)
+        grouped[f'class_{lead_class}_count'] = lead_class_data.get(lead_class, 0)
+        grouped[f'class_{lead_class}_percent'] = lead_class_percentages.get(lead_class, 0)
 
-    return summary.reset_index()
+    return grouped.reset_index()
 
 
 # MAIN EXECUTION
 if __name__ == "__main__":
     # Load the master file
     master_file_path = "output_files/output_master_file.csv"
-    master_data = pd.read_csv(master_file_path, parse_dates=['createdAt'], dayfirst=True)
-
+    try:
+        master_data = pd.read_csv(master_file_path, parse_dates=['createdAt'], dayfirst=True)
+    except FileNotFoundError:
+        print(f"Error: Master file not found at {master_file_path}")
+        exit()
 
     print("Columns in master_data:", master_data.columns)
 
-    # Prompt the user for start and end dates in the same format as the data
-    start_date = pd.to_datetime(input("Enter the start date (DD/MM/YYYY): "), format='%d/%m/%Y')
-    end_date = pd.to_datetime(input("Enter the end date (DD/MM/YYYY): "), format='%d/%m/%Y')
-
+    # Prompt the user for start and end dates
+    try:
+        start_date = pd.to_datetime(input("Enter the start date (DD/MM/YYYY): "), format='%d/%m/%Y')
+        end_date = pd.to_datetime(input("Enter the end date (DD/MM/YYYY): "), format='%d/%m/%Y')
+    except ValueError:
+        print("Error: Invalid date format. Please use DD/MM/YYYY.")
+        exit()
 
     # Prompt the user for dimensions to group by
     dimensions_input = input("Enter dimensions to group by, separated by commas (e.g., 'First user source / medium,First user campaign'): ")
-    dimensions = [dim.strip() for dim in dimensions_input.split(',')]
+    dimensions = [dim.strip() for dim in dimensions_input.split(',') if dim.strip()]
+
+    # Validate dimensions
+    required_columns = ['createdAt', 'lead_class', 'total_score'] + dimensions
+    missing_columns = [col for col in required_columns if col not in master_data.columns]
+    if missing_columns:
+        print(f"Error: Missing required columns in data: {', '.join(missing_columns)}")
+        exit()
 
     # Generate the summary
     summary = generate_summary(master_data, start_date, end_date, dimensions)
@@ -64,9 +76,10 @@ if __name__ == "__main__":
     # Convert start and end dates to strings for filenames
     start_date_str = start_date.strftime('%Y%m%d')
     end_date_str = end_date.strftime('%Y%m%d')
+    dimensions_for_filename = '_'.join(dim.replace(' ', '_').replace('/', '_') for dim in dimensions)
 
     # Save the summary report
-    output_file_path = f"output_files/summary_{'_'.join(dimensions)}_{start_date_str}_to_{end_date_str}.csv"
+    output_file_path = f"output_files/summary_{dimensions_for_filename}_{start_date_str}_to_{end_date_str}.csv"
     summary.to_csv(output_file_path, index=False)
 
     print(f"Summary report generated and saved to {output_file_path}")

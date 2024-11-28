@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from lead_scoring_tool import apply_lead_scoring
+from generate_summary_reports import generate_summary
 
 st.title("Lead Scoring Tool")
 
@@ -146,39 +147,82 @@ elif section == "View Results":
     else:
         st.info("Run lead scoring to view results.")
 
-
-# Generate Summary Reports section
+# Generate Summary Reports Section
 
 elif section == "Generate Summary Reports":
     st.header("Generate Summary Reports")
 
-    # Controls Section
-    st.subheader("Controls")
+    # Check if scored data is available in session state
+    if "scored_data" in st.session_state:
+        scored_data = st.session_state["scored_data"]
 
-    # Date Range Selection
-    start_date = st.date_input("Start Date", pd.to_datetime("2024-01-01"))
-    end_date = st.date_input("End Date", pd.to_datetime("2024-12-31"))
+        # Convert `createdAt` to datetime if not already
+        if scored_data["createdAt"].dtype != "datetime64[ns]":
+            scored_data["createdAt"] = pd.to_datetime(scored_data["createdAt"], format="%d/%m/%Y", errors="coerce")
 
-    if start_date > end_date:
-        st.error("Start date cannot be after end date.")
+        # Controls Section
+        st.subheader("Controls")
 
-    # Dimension Mapping
-    dimension_mapping = {
-        "Source/Medium": "First user source / medium",
-        "Campaign": "First user campaign"
-    }
+        # Date Range Selection
+        date_min = scored_data["createdAt"].min()
+        date_max = scored_data["createdAt"].max()
+        start_date, end_date = st.date_input(
+            "Select Date Range",
+            [date_min, date_max],
+            min_value=date_min,
+            max_value=date_max
+        )
 
-    # Dimension Selection
-    st.write("**Choose dimensions for grouping:**")
-    selected_dimensions = st.multiselect(
-        "Group by",
-        options=list(dimension_mapping.keys()),  # Display names
-        default=["Source/Medium"]
-    )
+        # Ensure selected dates are in datetime format
+        start_date = pd.to_datetime(start_date)
+        end_date = pd.to_datetime(end_date)
 
-    if not selected_dimensions:
-        st.warning("Please select at least one dimension for grouping.")
+        if start_date > end_date:
+            st.error("Start date cannot be after end date.")
 
-    # Translate display names to actual column names
-    grouping_columns = [dimension_mapping[dim] for dim in selected_dimensions]
+        # Dimension Mapping for human-readable dimensions
+        dimension_mapping = {
+            "Source/Medium": "First user source / medium",
+            "Campaign": "First user campaign"
+        }
 
+        # Dimension Selection
+        st.write("**Choose dimensions for grouping:**")
+        selected_dimensions = st.multiselect(
+            "Select dimensions to group by",
+            options=list(dimension_mapping.keys()),  # Dropdown labels
+            default=['Source/Medium']  # Default selection
+        )
+
+        # Map selected options to dataset column names
+        selected_columns = [dimension_mapping[dim] for dim in selected_dimensions if dim in dimension_mapping]
+
+        if not selected_columns:
+            st.warning("Please select at least one dimension for grouping.")
+
+        # Button to generate the report
+        if st.button("Generate Report"):
+            if not start_date or not end_date:
+                st.error("Please specify both start and end dates.")
+            elif not selected_columns:
+                st.error("Please select at least one grouping dimension.")
+            else:
+                # Generate the report
+                try:
+                    summary = generate_summary(scored_data, start_date, end_date, selected_columns)
+
+                    # Display the report
+                    st.subheader("Summary Report")
+                    st.dataframe(summary)
+
+                    # Download option
+                    st.download_button(
+                        label="Download Report",
+                        data=summary.to_csv(index=False).encode("utf-8"),
+                        file_name=f"summary_report_{start_date.strftime('%Y%m%d')}_to_{end_date.strftime('%Y%m%d')}.csv",
+                        mime="text/csv"
+                    )
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+    else:
+        st.info("Run lead scoring to generate summary reports.")
