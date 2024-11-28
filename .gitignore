@@ -1,0 +1,36 @@
+# Ignore Python cache and environment files
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+*.env
+*.venv
+
+# Ignore local virtual environment folders
+lead_scoring_env/
+test_env/
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+
+# Ignore input and output data folders
+input_files/
+output_files/
+
+# Ignore Streamlit temporary files
+.streamlit/
+
+# Ignore Jupyter notebook checkpoints if applicable
+.ipynb_checkpoints/
+
+# Ignore OS-specific files
+Thumbs.db
+desktop.ini
