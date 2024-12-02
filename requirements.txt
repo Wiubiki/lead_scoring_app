@@ -7,3 +7,5 @@ python-dateutil==2.9.0
 rich==13.9.4
 scipy
 streamlit==1.40.1
+google-ath
+google-analytics-data

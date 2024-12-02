@@ -14,6 +14,11 @@ ENV/
 lead_scoring_env/
 test_env/
 
+# Service account keys and secrets
+*.json
+*.pem
+*.key
+
 # Ignore logs and temporary files
 *.log
 *.tmp
