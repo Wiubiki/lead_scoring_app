@@ -18,6 +18,7 @@ test_env/
 *.json
 *.pem
 *.key
+*.toml
 
 # Ignore logs and temporary files
 *.log

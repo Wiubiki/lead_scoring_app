@@ -1,7 +1,19 @@
 import google.analytics.data_v1beta as beta
 from google.analytics.data_v1beta import BetaAnalyticsDataClient, RunReportRequest
+from google.oauth2.service_account import Credentials
 import pandas as pd
 import os
+import json
+import streamlit as st
+
+# Load credentials from Streamlit secrets
+credentials_dict = st.secrets["google_credentials"]
+
+# Create credentials object
+credentials = Credentials.from_service_account_info(credentials_dict)
+
+# Initialize the Analytics Data API client with credentials
+client = BetaAnalyticsDataClient(credentials=credentials)
 
 # Replace the property ID directly here
 property_id = "353721724"
