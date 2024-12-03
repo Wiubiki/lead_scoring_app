@@ -3,18 +3,16 @@ from google.analytics.data_v1beta import BetaAnalyticsDataClient, RunReportReque
 import pandas as pd
 import os
 
+# Replace the property ID directly here
+property_id = "353721724"
 
 # Set the environment variable for the Google Cloud credentials
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "dreamclass-leadscoring-10a3ac3a769b.json"
 
-
-# Initialize the Analytics Data API client
-client = BetaAnalyticsDataClient()
-
 # Function to fetch data from Google Analytics
-def fetch_ga_data(property_id, start_date, end_date):
+def fetch_ga_data(start_date, end_date):
     """
-    Fetch data from Google Analytics using the API.
+    Fetch data from Google Analytics using the API. and he harcoded property ID
 
     Args:
         property_id (str): GA4 property ID.
@@ -24,13 +22,16 @@ def fetch_ga_data(property_id, start_date, end_date):
     Returns:
         pd.DataFrame: A DataFrame containing the fetched data.
     """
+    # Initialize the Analytics Data API client
+    client = BetaAnalyticsDataClient()
+    # Initialize the request with the following dimensions and metrics
     request = RunReportRequest(
         property=f"properties/{property_id}",
         dimensions=[
             {"name": "country"},
             {"name": "firstUserCampaignName"},
-            {"name": "firstUserMedium"},
-            {"name": "firstUserSource"},
+            {"name": "firstUserGoogleAdsAdGroupName"},
+            {"name": "firstUserSourceMedium"},
             {"name": "region"},
             {"name": "customUser:icpGroup"},
             {"name": "customUser:schoolType"},
@@ -63,7 +64,7 @@ def fetch_ga_data(property_id, start_date, end_date):
     # Return as a DataFrame
     return pd.DataFrame(rows, columns=headers)
 
-
+'''
 # MAIN EXECUTION (Example)
 if __name__ == "__main__":
     # Example property ID
@@ -78,4 +79,4 @@ if __name__ == "__main__":
 
     # Save to CSV (optional)
     ga_data.to_csv("output_files/ga_data.csv", index=False)
-    print("Google Analytics data retrieved and saved to 'output_files/ga_data.csv'.")
+    print("Google Analytics data retrieved and saved to 'output_files/ga_data.csv'.")'''

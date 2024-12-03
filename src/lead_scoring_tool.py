@@ -31,13 +31,16 @@ def apply_lead_scoring(dreamclass_data: pd.DataFrame, ga_data: pd.DataFrame) -> 
     # Rename and merge dataframes
     dreamclass_data = dreamclass_data.rename(columns={'id': 'userId'})
     ga_data = ga_data.rename(columns={'Country': 'country', 'icpGroup': 'icp_group'})
+    # Ensure 'userId' is of the same type in both datasets
+    dreamclass_data['userId'] = dreamclass_data['userId'].astype(str)
+    ga_data['userId'] = ga_data['userId'].astype(str)
     merged_df = pd.merge(dreamclass_data, ga_data, on='userId', how='left', suffixes=('', '_ga')).fillna('missing')
     merged_df['First user source / medium'] = merged_df['First user source / medium'].str.lower()
 
     # Separate leads and customers
     lead_statuses = ['trial', 'trial_expired', 'incomplete_expired']
     merged_data_leads = merged_df[merged_df['status'].isin(lead_statuses)]
-    
+
     # Apply scoring
     merged_data_leads['email_domain_score'] = merged_data_leads.apply(lambda row: email_domain_score(row['email'], row['organization']), axis=1)
     merged_data_leads['organization_name_score'] = merged_data_leads['organization'].apply(organization_name_score)
@@ -46,7 +49,7 @@ def apply_lead_scoring(dreamclass_data: pd.DataFrame, ga_data: pd.DataFrame) -> 
     merged_data_leads['engagement_score'] = merged_data_leads['adminLogins'].apply(engagement_score)
     merged_data_leads['country_score'] = merged_data_leads['country'].apply(country_score)
     merged_data_leads['icp_score'] = merged_data_leads['icp_group'].apply(icp_score)
-    
+
     # Calculate total score and assign lead class
     merged_data_leads['total_score'] = (
         weights['email_domain'] * merged_data_leads['email_domain_score'] +
@@ -58,7 +61,6 @@ def apply_lead_scoring(dreamclass_data: pd.DataFrame, ga_data: pd.DataFrame) -> 
         weights['icp_group'] * merged_data_leads['icp_score']
     )
     merged_data_leads['lead_class'] = merged_data_leads['total_score'].apply(assign_lead_class)
-    
+
     # Return scored leads data
     return merged_data_leads
-

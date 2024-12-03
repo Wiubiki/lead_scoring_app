@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from lead_scoring_tool import apply_lead_scoring
 from generate_summary_reports import generate_summary
+from ga_data_retrieval import fetch_ga_data
 from auth_library import authenticate
 
 # Authenticate logic
@@ -46,19 +47,90 @@ if st.session_state["authenticated"]:
 
         # File uploaders for DreamClass and Google Analytics data
         uploaded_dreamclass = st.file_uploader("Upload DreamClass Data", type=["csv"])
-        uploaded_ga = st.file_uploader("Upload Google Analytics Data", type=["csv"])
-
-        # Store data in session state if both files are uploaded
-        if uploaded_dreamclass and uploaded_ga:
+        if uploaded_dreamclass:
             st.session_state["dreamclass_data"] = pd.read_csv(uploaded_dreamclass)
-            st.session_state["ga_data"] = pd.read_csv(uploaded_ga)
-            st.success("Data files uploaded and stored successfully!")
+            st.success("DreamClass data uploaded successfully!")
 
-            # Display sample data
+            # Display sample DreamClass data
             st.write("DreamClass Data Sample", st.session_state["dreamclass_data"].head())
-            st.write("GA Data Sample", st.session_state["ga_data"].head())
 
-    # Run Scoring Section
+            # Google Analytics Data Retrieval Options
+            st.subheader("Google Analytics Data Retrieval")
+
+            # Default initialization for date_min and date_max
+            date_min = None
+            date_max = None
+
+            # Set retrieval option
+            retrieval_option = st.radio(
+                "How do you want to retrieve Google Analytics data?",
+                ("Provide Date Range", "Sync with DreamClass")
+            )
+
+            if retrieval_option == "Sync with DreamClass":
+                # Auto-sync with DreamClass
+                if "dreamclass_data" in st.session_state:
+                    dreamclass_data = st.session_state["dreamclass_data"]
+                    dreamclass_data["createdAt"] = pd.to_datetime(
+                        dreamclass_data["createdAt"], format="%d/%m/%Y", errors="coerce"
+                    )
+                    date_min = dreamclass_data["createdAt"].min().strftime("%d/%m/%Y")
+                    date_max = dreamclass_data["createdAt"].max().strftime("%d/%m/%Y")
+                else:
+                    st.error("DreamClass data is missing. Please upload it in the 'Upload Data' section.")
+                    st.stop()
+
+            elif retrieval_option == "Provide Date Range":
+                # Default values if no DreamClass data is available
+                if date_min is None or date_max is None:
+                    date_min = "01/01/2024"  # Example default
+                    date_max = "31/12/2024"  # Example default
+
+                # Allow user to pick a date range
+                st.write("Select Date Range")
+                user_start_date, user_end_date = st.date_input(
+                    "Pick a date range",
+                    [
+                        pd.to_datetime(date_min, format="%d/%m/%Y"),
+                        pd.to_datetime(date_max, format="%d/%m/%Y")
+                    ],
+                    min_value=pd.to_datetime("01/01/2023", format="%d/%m/%Y"),
+                    max_value=pd.to_datetime("31/12/2025", format="%d/%m/%Y"),
+                )
+
+                # Update date_min and date_max based on user input
+                if user_start_date and user_end_date:
+                    date_min = user_start_date.strftime("%d/%m/%Y")
+                    date_max = user_end_date.strftime("%d/%m/%Y")
+
+            # Convert dates to GA4 format right before the fetch
+            start_date = pd.to_datetime(date_min, format="%d/%m/%Y").strftime("%Y-%m-%d")
+            end_date = pd.to_datetime(date_max, format="%d/%m/%Y").strftime("%Y-%m-%d")
+
+            # Fetch GA Data
+            if st.button("Fetch Google Analytics Data"):
+                try:
+                    ga_data = fetch_ga_data(start_date, end_date)
+                    # Rename columns for consistency with application conventions
+                    ga_data = ga_data.rename(columns={
+                        'firstUserCampaignName': 'First user campaign',
+                        'firstUserSourceMedium': 'First user source / medium',
+                        'customUser:icpGroup': 'icp_group',
+                        'customUser:schoolType': 'school_type',
+                        'customUser:userId': 'userId',
+                        'firstUserGoogleAdsAdGroupName': 'Google Ads Ad Group'
+                    })
+
+                    # Store the fetched GA data in session state
+                    st.session_state["ga_data"] = ga_data
+
+                    st.success("Google Analytics data retrieved and processed successfully!")
+                    st.dataframe(ga_data)  # Display the renamed GA data
+                except Exception as e:
+                    st.error(f"Failed to fetch GA data: {e}")
+
+
+
     elif section == "Run Scoring":
         st.header("Run Lead Scoring")
 
