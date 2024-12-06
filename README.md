@@ -1,4 +1,4 @@
-# **Lead Scoring MVP**
+# **Lead Scoring App**
 
 A streamlined and interactive tool for evaluating and visualizing lead scoring metrics based on DreamClass data. This MVP allows for manual file uploads, real-time filtering, scoring calculations, and intuitive visualizations to assist sales and marketing teams in prioritizing leads.
 
