@@ -5,8 +5,8 @@ import ast  # For safely parsing JSON-like strings
 file_path = "output_files/dreamclass_data.csv"
 dc_data = pd.read_csv(file_path)
 
-# Drop unnecessary columns
-columns_to_drop = ["schemaName", "zohoLeadId", "zohoContactId", "zohoAccountId"]
+# Drop the unnecessary columns, including 'schooltype'
+columns_to_drop = ["schemaName", "zohoLeadId", "zohoContactId", "zohoAccountId", "schooltype"]
 dc_data = dc_data.drop(columns=columns_to_drop)
 
 # Parse `dcSubscription` to extract `status` and `dcPlan.name`
@@ -30,7 +30,9 @@ dc_data["createdAt"] = pd.to_datetime(dc_data["createdAt"], errors="coerce").dt.
 dc_data["id"] = dc_data["id"].astype(str)
 dc_data["adminLogins"] = pd.to_numeric(dc_data["adminLogins"], errors="coerce").fillna(0).astype(int)
 
+"""
 # Save cleaned data
 output_file = "output_files/cleaned_dreamclass_data.csv"
 dc_data.to_csv(output_file, index=False)
 print(f"Cleaned data saved to {output_file}")
+"""

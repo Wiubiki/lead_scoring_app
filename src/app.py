@@ -4,7 +4,11 @@ import matplotlib.pyplot as plt
 from lead_scoring_tool import apply_lead_scoring
 from generate_summary_reports import generate_summary
 from ga_data_retrieval import fetch_ga_data
+from dreamclass_data_handler import fetch_dreamclass_data 
+from dreamclass_data_handler import clean_dreamclass_data
 from auth_library import authenticate
+
+
 
 # Authenticate logic
 if "authenticated" not in st.session_state:
@@ -33,26 +37,45 @@ if st.session_state["authenticated"]:
     st.sidebar.header("Navigation")
     section = st.sidebar.selectbox(
         "Choose a section:",
-        ["Upload Data", "Run Scoring", "View Results", "Generate Summary Reports"]
+        ["Retrieve Data", "Run Scoring", "View Results", "Generate Summary Reports"]
     )
 
     # Placeholder data variables
     dreamclass_data = None
     ga_data = None
     scored_data = None
+    if "dreamclass_data" not in st.session_state:
+        st.session_state["dreamclass_data"] = None
 
     # Upload Data Section with Session State Storage
-    if section == "Upload Data":
-        st.header("Upload Data Files")
+    if section == "Retrieve Data":
+        st.header("Retrieve Necessary Data Files")
 
-        # File uploaders for DreamClass and Google Analytics data
-        uploaded_dreamclass = st.file_uploader("Upload DreamClass Data", type=["csv"])
-        if uploaded_dreamclass:
-            st.session_state["dreamclass_data"] = pd.read_csv(uploaded_dreamclass)
-            st.success("DreamClass data uploaded successfully!")
+        # DreamClass Data Retrieval
+        st.subheader("DreamClass Data Retrtieval")
 
-            # Display sample DreamClass data
-            st.write("DreamClass Data Sample", st.session_state["dreamclass_data"].head())
+        # DreamClass API Details
+        dreamclass_api_url = "https://panel-backend.dreamclass.io/account/getAccountsWithStatuses?statuses=trial_expired"
+        dreamclass_auth_headers = {
+            "Authorization": "Basic ZGlhZ3JhbW1hOmRyZWFt",
+            "x-dc-additional-data": "JxEshGVbegQiFZHJ6XefXTvXLjVSchnr"
+        }
+
+        # Fetch and Clean DreamClass Data
+        if st.button("Fetch DreamClass Data"):
+            try:
+                # Fetch raw data
+                raw_dreamclass_data = fetch_dreamclass_data(dreamclass_api_url, dreamclass_auth_headers)
+                st.write("Raw DreamClass Data", raw_dreamclass_data.head())  # Display raw data for debugging
+
+                # Clean data
+                dreamclass_data = clean_dreamclass_data(raw_dreamclass_data)
+                st.session_state["dreamclass_data"] = dreamclass_data
+
+                st.success("DreamClass data retrieved and cleaned successfully!")
+                st.dataframe(dreamclass_data)  # Display cleaned data
+            except Exception as e:
+                st.error(f"Failed to retrieve or clean DreamClass data: {e}")
 
             # Google Analytics Data Retrieval Options
             st.subheader("Google Analytics Data Retrieval")
