@@ -1,0 +1,3 @@
+[submodule "app_sensitive_files"]
+	path = app_sensitive_files
+	url = git@github.com:Wiubiki/app_sensitive_files.git
