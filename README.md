@@ -1,95 +1,141 @@
-# **Lead Scoring App**
+# Lead Scoring App
 
-A streamlined and interactive tool for evaluating and visualizing lead scoring metrics based on DreamClass data. This MVP allows for manual file uploads, real-time filtering, scoring calculations, and intuitive visualizations to assist sales and marketing teams in prioritizing leads.
-
----
-
-## **Features**
-
-- **Lead Scoring**: Calculates scores for leads based on predefined criteria such as email domain, organization name, engagement, and more.
-- **Customer Comparison**: Provides insights into customer behavior by comparing lead scores with customer profiles.
-- **Visualization**: Displays filtered results in a pie chart, showcasing the distribution of leads by class.
-- **Date Filtering**: Allows users to filter results by `createdAt` date range.
-- **Interactive GUI**: A user-friendly Streamlit-based interface for ease of navigation.
+The Lead Scoring App is a fully functional MVP designed to streamline the lead scoring process by integrating data from Google Analytics (GA4) and DreamClass. The app provides features for automated data retrieval, scoring, and summary report generation.
 
 ---
 
-## **Technologies Used**
-
-- **Streamlit**: For building the web-based interface.
-- **Pandas**: For data manipulation and scoring calculations.
-- **Matplotlib**: For generating visualizations.
-- **Python**: The core programming language.
+## Table of Contents
+1. [Features](#features)
+2. [Technologies Used](#technologies-used)
+3. [Setup Instructions](#setup-instructions)
+   - [Clone the Repository](#clone-the-repository)
+   - [Install Dependencies](#install-dependencies)
+   - [Handle Sensitive Files](#handle-sensitive-files)
+   - [Run the App Locally](#run-the-app-locally)
+4. [Deployment](#deployment)
+   - [Streamlit Community Cloud](#streamlit-community-cloud)
+5. [Troubleshooting](#troubleshooting)
 
 ---
 
-## **Installation**
+## Features
+- **Data Retrieval**: 
+  - Fetches data from Google Analytics and DreamClass APIs.
+  - Supports both manual uploads and API-based synchronization.
+- **Lead Scoring**:
+  - Processes data to assign lead scores based on custom criteria.
+  - Provides detailed filtering and sorting options for scored leads.
+- **Report Generation**:
+  - Generates summary reports with customizable date ranges and grouping dimensions.
+  - Includes download options for CSV files.
+- **Authentication**:
+  - Secures app access with user authentication.
 
-### Prerequisites
-- Python 3.10 or later
-- Git
+---
 
-### Steps
- 1. Clone the repository:
-   ```bash
-   git clone <your-repo-url>
-   cd lead_scoring_mvp
+## Technologies Used
+- **Backend**: Python
+- **Frontend**: Streamlit
+- **APIs**: Google Analytics Data API, DreamClass API
+- **Libraries**: 
+  - `pandas`, `numpy`, `matplotlib` for data processing and visualization.
+  - `bcrypt` for authentication.
+  - `streamlit` for app development.
+
+---
+
+## Setup Instructions
+
+### Clone the Repository
+1. Clone the main repository:
+   ```bash 
+   git clone https://github.com/yourusername/lead_scoring_app.git
+   cd lead_scoring_app
    ```
- 2. Set up a virtual environemnt:
+
+2. Initialize and update the submodule for sensitive files:
+   ```bash
+   git submodule update --init --recursive
+   ```
+
+### Install Dependencies
+1. Create a virtual environment:
    ```bash
    python3 -m venv lead_scoring_env
-   source lead_scoring_env/bin/activate
+   source lead_scoring_env/bin/activate  # Linux/MacOS
+   lead_scoring_env\Scripts\activate    # Windows
    ```
- 3. Install dependancies:
+
+2. Install required packages:
    ```bash
    pip install -r requirements.txt
    ```
-    
----
 
-## **Usage**
+### Handle Sensitive Files
+The app requires a `secrets.toml` file to function properly. This file is stored securely in the `app_sensitive_files` submodule.
 
- 1. Start the App:
+1. Create a symlink to the `secrets.toml` file:
    ```bash
-   streamlit run app.py
+   ln -s ../app_sensitive_files/.streamlit/secrets.toml .streamlit/secrets.toml
    ```
-   
- 2. Upload Data:
-    - Upload the `dreamclassAccounts.csv` and `googleanalytics_data.csv` files.
-  
- 3. Run Scoring:
-    - Use the "Run Scoring" button to process the uploaded data.
-  
- 4. View Results:
-    - Navigate through the sidebar to filter by date and view results, including visualizations of lead distributions.
 
+2. Verify the symlink:
+   ```bash
+   realpath .streamlit/secrets.toml
+   ```
 
----
+3. If using an absolute path for the symlink:
+   ```bash
+   ln -s /absolute/path/to/app_sensitive_files/.streamlit/secrets.toml .streamlit/secrets.toml
+   ``` 
 
-## **Folder Structure**
+### Run the App Locally
+1. Activate your virtual environment:
+   ```bash
+   source lead_scoring_env/bin/activate  # Linux/MacOS
+   ```
 
- - src/:
-   - `app.py`: Main Streamlit application.
-   - `lead_scoring_tool.py`: Lead scoring logic.
-   - `scoring_functions.py`: Contains scoring functions.
-   - `validation.py`: Validates and compares customer and lead profiles.
- - `input_files/`: Directory for uploading data files.
- - `output_files/`: Stores output files like `master_file.csv` and visualization data.
- 
- --- 
- 
- ## **Future Enhancements**
- 
- - Automate data retrieval from APIs.
- - Advanced visualizations for better insights.
- - Store processed data in cloud storage for accessibility and collaboration.
- - Deploy the app on a server for team-wide usage.
+2. Run the Streamlit app:
+   ```bash 
+   streamlit run src/app.py
+   ```
 
 ---
 
-## **License**
-This project is licensed under the MIT License.
+## Deployment
 
+### Streamlit Community Cloud
+1. **Set up Secrets**:  
+   Configure the Google Analytics credentials and other sensitive data in the **Secrets Management** section of the Streamlit Community Cloud platform.
 
- 
+2. **Push to Main Branch**:  
+   The deployment is linked to the main branch. Ensure all updates are pushed to `main`:
+   ```bash
+   git checkout main
+   git merge dev
+   git push origin main
+   ```
 
+3. The app will automatically update on Streamlit Community Cloud.
+
+---
+
+## Troubleshooting
+
+### Common Errors and Fixes
+1. **"No secrets found"**:
+   - Ensure the `secrets.toml` symlink is correctly configured.
+   - Confirm the `app_sensitive_files` submodule is initialized and updated.
+
+2. **Google Analytics Data Retrieval Fails**:
+   - Verify that the Google Analytics API is enabled.
+   - Check the credentials in `secrets.toml`.
+
+3. **Symbolic Link Issues**:
+   - Use absolute paths if relative paths are not resolving correctly.
+
+4. **Data Parsing Errors**:
+   - Check the raw data format for inconsistencies.
+   - Update parsing logic in `dreamclass_data_handler.py` if needed.
+
+---

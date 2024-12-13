@@ -40,3 +40,6 @@ output_files/
 # Ignore OS-specific files
 Thumbs.db
 desktop.ini
+
+# Ignore submodule
+app_sensitivefiles/*
