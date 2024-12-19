@@ -65,18 +65,19 @@ if st.session_state["authenticated"]:
         if st.button("Fetch DreamClass Data"):
             try:
                 # Fetch raw data
-                raw_dreamclass_data = fetch_dreamclass_data(dreamclass_api_url, dreamclass_auth_headers)
+                raw_dreamclass_data = fetch_dreamclass_data()  # No arguments needed now
                 st.write("Raw DreamClass Data", raw_dreamclass_data.head())  # Display raw data for debugging
-
+        
                 # Clean data
                 dreamclass_data = clean_dreamclass_data(raw_dreamclass_data)
                 st.session_state["dreamclass_data"] = dreamclass_data
-
+        
                 st.success("DreamClass data retrieved and cleaned successfully!")
                 st.dataframe(dreamclass_data)  # Display cleaned data
             except Exception as e:
                 st.error(f"Failed to retrieve or clean DreamClass data: {e}")
 
+        
             # Google Analytics Data Retrieval Options
             st.subheader("Google Analytics Data Retrieval")
 

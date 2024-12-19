@@ -1,19 +1,28 @@
 import requests
 import pandas as pd
 import json
+import streamlit as st
 
-
-def fetch_dreamclass_data(api_url, auth_headers):
+def fetch_dreamclass_data():
     """
-    Fetch raw DreamClass data from the API.
+    Fetch raw DreamClass data securely using credentials from secrets.
     """
     try:
+        # Fetch credentials from Streamlit secrets
+        api_url = st.secrets["dreamclass_api"]["url"]
+        auth_headers = {
+            "Authorization": st.secrets["dreamclass_api"]["authorization"],
+            "x-dc-additional-data": st.secrets["dreamclass_api"]["additional_data"]
+        }
+
+        # Make API request
         response = requests.get(api_url, headers=auth_headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
         return pd.DataFrame(response.json())  # Convert response JSON to DataFrame
     except Exception as e:
         print(f"Error fetching DreamClass data: {e}")
         raise
+
 
 
 def parse_dc_subscription(value):
