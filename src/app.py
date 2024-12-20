@@ -47,28 +47,70 @@ if st.session_state["authenticated"]:
     if "dreamclass_data" not in st.session_state:
         st.session_state["dreamclass_data"] = None
 
-    # Upload Data Section with Session State Storage
+    # Retrieve Data Section with Date Range Picker
     if section == "Retrieve Data":
-        st.header("Retrieve Necessary Data Files")
-
+        st.header("Retrieve Data")
+    
+        # Date Range Picker
+        st.subheader("Pick a Date Range (Mandatory)")
+    
+        # Initialize the default date range (e.g., for the last year)
+        today = pd.Timestamp.now()
+        default_start = today - pd.Timedelta(days=14)
+        default_end = today
+    
+        # Let users pick a date range
+        user_date_range = st.date_input(
+            "Pick a date range",
+            [default_start.date(), default_end.date()],
+            min_value=pd.Timestamp("2023-01-01").date(),  # Adjust as needed
+            max_value=today.date(),
+        )
+    
+        # Validate user input
+        if isinstance(user_date_range, (list, tuple)) and len(user_date_range) == 2:
+            user_start_date, user_end_date = user_date_range
+            if user_start_date and user_end_date:  # Ensure both dates are selected
+                start_date = pd.Timestamp(user_start_date).strftime("%Y-%m-%d")
+                end_date = pd.Timestamp(user_end_date).strftime("%Y-%m-%d")
+                st.session_state["date_min"] = start_date
+                st.session_state["date_max"] = end_date
+                st.success(f"Date Range Selected: {start_date} to {end_date}")
+            else:
+                st.error("Please select both start and end dates to proceed.")
+                st.stop()
+        else:
+            st.error("Please select a valid date range to proceed.")
+            st.stop()
+        
+    
+        # Display the selected date range
+        st.write(f"Selected Date Range: {st.session_state['date_min']} to {st.session_state['date_max']}")
+    
         # DreamClass Data Retrieval
-        st.subheader("DreamClass Data Retrtieval")
-
-        # DreamClass API Details
-        dreamclass_api_url = "https://panel-backend.dreamclass.io/account/getAccountsWithStatuses?statuses=trial_expired"
-        dreamclass_auth_headers = {
-            "Authorization": "Basic ZGlhZ3JhbW1hOmRyZWFt",
-            "x-dc-additional-data": "JxEshGVbegQiFZHJ6XefXTvXLjVSchnr"
-        }
-
+        st.subheader("DreamClass Data Retrieval")
+        
+        # Status selection for DreamClass retrieval
+        default_statuses = ["trial", "trial_expired", "active", "canceled"]
+        selected_statuses = st.multiselect(
+            "Select statuses to retrieve:",
+            options=default_statuses,
+            default=default_statuses  # Pre-select all statuses
+        )
+        
+        if not selected_statuses:
+            st.error("Please select at least one status to retrieve data.")
+            st.stop()
+        
         # Fetch and Clean DreamClass Data
         if st.button("Fetch DreamClass Data"):
             try:
-                # Fetch raw data
-                raw_dreamclass_data = fetch_dreamclass_data()  # No arguments needed now
+                raw_dreamclass_data = fetch_dreamclass_data(
+                    st.secrets["dreamclass_api"]["base_url"],
+                    selected_statuses
+                )
                 st.write("Raw DreamClass Data", raw_dreamclass_data.head())  # Display raw data for debugging
         
-                # Clean data
                 dreamclass_data = clean_dreamclass_data(raw_dreamclass_data)
                 st.session_state["dreamclass_data"] = dreamclass_data
         
@@ -76,98 +118,55 @@ if st.session_state["authenticated"]:
                 st.dataframe(dreamclass_data)  # Display cleaned data
             except Exception as e:
                 st.error(f"Failed to retrieve or clean DreamClass data: {e}")
-
         
-            # Google Analytics Data Retrieval Options
-            st.subheader("Google Analytics Data Retrieval")
+    
+        # Fetch Google Analytics Data
+        st.subheader("Google Analytics Data Retrieval")
+        if st.button("Fetch Google Analytics Data"):
+            try:
+                ga_data = fetch_ga_data(start_date, end_date)
+                ga_data = ga_data.rename(columns={
+                    'firstUserCampaignName': 'First user campaign',
+                    'firstUserSourceMedium': 'First user source / medium',
+                    'customUser:icpGroup': 'icp_group',
+                    'customUser:schoolType': 'school_type',
+                    'customUser:userId': 'userId',
+                    'firstUserGoogleAdsAdGroupName': 'Google Ads Ad Group'
+                })
+                st.session_state["ga_data"] = ga_data
+                st.success("Google Analytics data retrieved and processed successfully!")
+                st.dataframe(ga_data)
+            except Exception as e:
+                st.error(f"Failed to fetch GA data: {e}")
 
-            # Default initialization for date_min and date_max
-            date_min = None
-            date_max = None
-
-            # Set retrieval option
-            retrieval_option = st.radio(
-                "How do you want to retrieve Google Analytics data?",
-                ("Provide Date Range", "Sync with DreamClass")
-            )
-
-            if retrieval_option == "Sync with DreamClass":
-                # Auto-sync with DreamClass
-                if "dreamclass_data" in st.session_state:
-                    dreamclass_data = st.session_state["dreamclass_data"]
-                    dreamclass_data["createdAt"] = pd.to_datetime(
-                        dreamclass_data["createdAt"], format="%d/%m/%Y", errors="coerce"
-                    )
-                    date_min = dreamclass_data["createdAt"].min().strftime("%d/%m/%Y")
-                    date_max = dreamclass_data["createdAt"].max().strftime("%d/%m/%Y")
-                else:
-                    st.error("DreamClass data is missing. Please upload it in the 'Upload Data' section.")
-                    st.stop()
-
-            elif retrieval_option == "Provide Date Range":
-                # Default values if no DreamClass data is available
-                if date_min is None or date_max is None:
-                    date_min = "01/01/2024"  # Example default
-                    date_max = "31/12/2024"  # Example default
-
-                # Allow user to pick a date range
-                st.write("Select Date Range")
-                user_start_date, user_end_date = st.date_input(
-                    "Pick a date range",
-                    [
-                        pd.to_datetime(date_min, format="%d/%m/%Y"),
-                        pd.to_datetime(date_max, format="%d/%m/%Y")
-                    ],
-                    min_value=pd.to_datetime("01/01/2023", format="%d/%m/%Y"),
-                    max_value=pd.to_datetime("31/12/2025", format="%d/%m/%Y"),
-                )
-
-                # Update date_min and date_max based on user input
-                if user_start_date and user_end_date:
-                    date_min = user_start_date.strftime("%d/%m/%Y")
-                    date_max = user_end_date.strftime("%d/%m/%Y")
-
-            # Convert dates to GA4 format right before the fetch
-            start_date = pd.to_datetime(date_min, format="%d/%m/%Y").strftime("%Y-%m-%d")
-            end_date = pd.to_datetime(date_max, format="%d/%m/%Y").strftime("%Y-%m-%d")
-
-            # Fetch GA Data
-            if st.button("Fetch Google Analytics Data"):
-                try:
-                    ga_data = fetch_ga_data(start_date, end_date)
-                    # Rename columns for consistency with application conventions
-                    ga_data = ga_data.rename(columns={
-                        'firstUserCampaignName': 'First user campaign',
-                        'firstUserSourceMedium': 'First user source / medium',
-                        'customUser:icpGroup': 'icp_group',
-                        'customUser:schoolType': 'school_type',
-                        'customUser:userId': 'userId',
-                        'firstUserGoogleAdsAdGroupName': 'Google Ads Ad Group'
-                    })
-
-                    # Store the fetched GA data in session state
-                    st.session_state["ga_data"] = ga_data
-
-                    st.success("Google Analytics data retrieved and processed successfully!")
-                    st.dataframe(ga_data)  # Display the renamed GA data
-                except Exception as e:
-                    st.error(f"Failed to fetch GA data: {e}")
-
-
-
-    elif section == "Run Scoring":
+    # Run Scoring Section
+    if section == "Run Scoring":
         st.header("Run Lead Scoring")
-
+    
         # Check if data is in session state
         if "dreamclass_data" in st.session_state and "ga_data" in st.session_state:
-            # Use data directly from session state
-            scored_data = apply_lead_scoring(st.session_state["dreamclass_data"], st.session_state["ga_data"])
+            dreamclass_data = st.session_state["dreamclass_data"]
+            ga_data = st.session_state["ga_data"]
+    
+            # Convert createdAt to datetime for filtering
+            dreamclass_data["createdAt"] = pd.to_datetime(dreamclass_data["createdAt"], format="%Y-%m-%d", errors="coerce")
+    
+            # Filter DreamClass data within the selected date range
+            filtered_dreamclass_data = dreamclass_data[
+                (pd.to_datetime(dreamclass_data["createdAt"]) >= pd.to_datetime(st.session_state["date_min"])) &
+                (pd.to_datetime(dreamclass_data["createdAt"]) <= pd.to_datetime(st.session_state["date_max"]))
+            ]
+            
+            # Perform lead scoring on filtered data
+            scored_data = apply_lead_scoring(filtered_dreamclass_data, ga_data)
             st.session_state["scored_data"] = scored_data  # Store scored data in session state
             st.success("Lead scoring completed!")
             st.write("Scored Leads Sample", scored_data.head())
         else:
-            st.info("Please upload data files first in the 'Upload Data' section.")
+            st.info("Please upload data files first in the 'Retrieve Data' section.")
+            
 
+    
     # View Results section
 
     elif section == "View Results":
