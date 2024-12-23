@@ -1,15 +1,19 @@
 # scoring_functions.py
 
+from rapidfuzz import fuzz
+
 
 # Shared lists for common domains and expanded educational keywords
 common_domains = ['gmail', 'yahoo', 'outlook', 'icloud', 'aol', 'mail', 'protonmail', 
-                  'zoho', 'yandex', 'gmx', 'live', 'googlemail', 'test', 'example']
+                  'zoho', 'yandex', 'gmx', 'live', 'googlemail', 'test', 'example', 'bing', 'hotmail']
 
 educational_keywords = ['academy', 'school', 'institute', 'college', 'university',
                         'christian', 'education', 'learning', 'montessori', 'church',
                         'training', 'conservatory', 'islamic', 'quran', 'saint', 
                         'académie', 'schola', 'career', 'scuola', 'charter', 
                         'foundation', 'prep', 'STEM', 'tech']
+
+secondary_keywords = ['middle', 'high', 'primary', 'tutor']
                         
 generic_keywords = ['info', 'admin', 'test', 'principal', 'registrar', 'accounting', 'support']
 
@@ -23,20 +27,35 @@ titles = ['admin', 'principal', 'hr', 'registrar', 'teacher', 'director', 'suppo
 def email_domain_score(email, organization):
     domain = email.split('@')[-1].split('.')[0]
     
-    if domain in common_domains:
+    if domain.endswith('.edu') or domain.endswith('.ac'):
+        return 1
+    elif domain in common_domains:
         return 0
     elif any(keyword in domain for keyword in educational_keywords) or organization.lower() in domain:
         return 1
-    else:
-        return 0.5
+    return 0.5
+
 
 # Organization name score function
 def organization_name_score(organization):
-    if any(keyword in organization.lower() for keyword in educational_keywords):
-        return 1
-    elif any(keyword in organization.lower() for keyword in ['test', 'example', 'demo']):
+    org_lower = organization.lower()
+    
+    # Check for primary educational keywords
+    for keyword in educational_keywords:
+        if fuzz.partial_ratio(org_lower, keyword) >= 85:  # Adjust threshold as needed
+            return 1
+
+    # Check for secondary keywords
+    for keyword in secondary_keywords:
+        if fuzz.partial_ratio(org_lower, keyword) >= 85:
+            return 0.5
+
+    # Check for test-related keywords
+    if any(keyword in org_lower for keyword in ['test', 'example', 'demo']):
         return -1
+
     return 0
+    
 
 # Email username score function with latest adjustments
 def email_username_score(email, name, organization, email_domain_score):
@@ -70,26 +89,27 @@ def email_username_score(email, name, organization, email_domain_score):
 
     # 3. Name and Organization Match Check
     if first_name in username or last_name in username or organization.lower() in username:
-        return 1.5 if email_domain_score == 1 else 0  # High score for match with professional domain
+        return 1.5 if email_domain_score == 1 else 0.5  # Adjusted match score for leniency
 
     # 4. Default Case
     return 0  # Default neutral score if none of the above
 
 # Name score function for validation
 def name_score(name):
+    name_parts = [part.lower().strip('.') for part in name.split() if part.lower().strip('.') not in suffixes]
     
-    name_parts = [part.lower() for part in name.split() if part.lower() not in suffixes]
-    
-    # Check for title-based names
     if any(title in name_parts for title in titles):
-        return 0  # Neutral score for title-only names
+        return 0
     
-    # Assign score based on name format
-    if len(name_parts) == 2:  # Typical first and last name
+    if len(name_parts) >= 2 and all(part.isalpha() for part in name_parts):
         return 1
     elif len(name_parts) == 1 and name_parts[0] not in generic_keywords:
-        return 0.5  # Single name, somewhat reliable
-    return -1  # Names that appear too generic or as placeholders
+        return 0.5
+    elif len(name_parts) >= 2 and any(part.islower() or part.isupper() for part in name_parts):
+        return 0
+    return -1
+
+    
 
 # Engagement score function (admin logins) with updated logic
 def engagement_score(adminLogins):

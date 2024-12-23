@@ -227,6 +227,11 @@ if st.session_state["authenticated"]:
 
             # Calculate lead class distribution
             lead_class_counts = filtered_data["lead_class"].value_counts()
+
+            # Sort lead_class_counts by index to ensure proper order (Class 1, Class 2, etc.)
+            lead_class_counts = lead_class_counts.sort_index()
+
+            # Calculate percentages based on the sorted lead_class_counts
             lead_class_percentages = lead_class_counts / lead_class_counts.sum() * 100
 
             # Pie Chart Visualization
@@ -241,13 +246,14 @@ if st.session_state["authenticated"]:
             fig, ax = plt.subplots()
             ax.pie(
                 lead_class_percentages,
-                labels=[f"Class {int(cls)}" for cls in lead_class_counts.index],
+                labels=[f"Class {int(cls)}" for cls in lead_class_counts.index],  # Ensure labels match sorted order
                 autopct=lambda pct: autopct_format(pct, lead_class_counts),  # Custom formatting
-                startangle=90,
-                colors=plt.cm.Paired.colors[:len(lead_class_counts)]
+                startangle=90,  # Starting angle for the first pie slice
+                counterclock=False,  # Clockwise sorting
+                colors=plt.cm.Paired.colors[:len(lead_class_counts)]  # Ensure enough colors for all slices
             )
             ax.set_title(f"Lead Class Distribution (Total Leads: {len(filtered_data)})")
-            ax.axis("equal")  # Equal aspect ratio ensures that the pie chart is a circle
+            ax.axis("equal")  # Equal aspect ratio ensures the pie chart is a circle
 
             # Display pie chart in Streamlit
             st.pyplot(fig)
