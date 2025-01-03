@@ -4,6 +4,7 @@ matplotlib
 numpy
 pandas
 python-dateutil==2.9.0
+rapidfuzz
 rich==13.9.4
 scipy
 streamlit==1.40.1
