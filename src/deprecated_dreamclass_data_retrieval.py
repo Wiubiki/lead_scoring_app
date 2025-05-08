@@ -1,3 +1,8 @@
+# DEPRECATED: This file is no longer used.
+# The active implementation lives in dreamclass_data_handler.py.
+# Do not edit or rely on this version unless revalidated.
+
+
 import requests
 import pandas as pd
 import json
