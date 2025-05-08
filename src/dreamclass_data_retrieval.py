@@ -9,8 +9,8 @@ ENDPOINT = "/account/getAccountsWithStatuses"
 # Headers for authorization and additional data
 HEADERS = {
     "accept": "application/json, text/plain, */*",
-    "authorization": "Basic ZGlhZ3JhbW1hOmRyZWFt",  # Replace with environment variable or secret,
-    "x-dc-additional-data": "GxwShGVaegQiF4HJ1XezXTvfLjVacFnr",  # Replace with new cookie JxEshGVbegQiFZHJ6XefXTvXLjVSchnr
+    "authorization": "Basic ZGlhZ25yYW1tYTpkcmVhbQ==",  # updated base64: diagnramma:dream
+    "x-dc-additional-data": "GxwShGVaegQiF4HJ1XezXTvfLjVacFnr",  # Replace if needed
 }
 
 def fetch_dreamclass_data(status="trial_expired"):
