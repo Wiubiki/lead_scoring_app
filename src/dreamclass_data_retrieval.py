@@ -9,7 +9,7 @@ ENDPOINT = "/account/getAccountsWithStatuses"
 # Headers for authorization and additional data
 HEADERS = {
     "accept": "application/json, text/plain, */*",
-    "authorization": "Basic ZGlhZ3JhbW1hOmRyZWFt",  # Replace with environment variable or secret
+    "authorization": "Basic GxwShGVaegQiF4HJ1XezXTvfLjVacFnr",  # Replace with environment variable or secret, old is ZGlhZ3JhbW1hOmRyZWFt
     "x-dc-additional-data": "JxEshGVbegQiFZHJ6XefXTvXLjVSchnr",
 }
 
