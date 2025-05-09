@@ -12,6 +12,7 @@ The Lead Scoring App is a fully functional MVP designed to streamline the lead s
    - [Install Dependencies](#install-dependencies)
    - [Handle Sensitive Files](#handle-sensitive-files)
    - [Run the App Locally](#run-the-app-locally)
+   - [Collaborator Workflow](#collaborator-workflow)
 4. [Deployment](#deployment)
    - [Streamlit Community Cloud](#streamlit-community-cloud)
 5. [Troubleshooting](#troubleshooting)
@@ -49,7 +50,7 @@ The Lead Scoring App is a fully functional MVP designed to streamline the lead s
 ### Clone the Repository
 1. Clone the main repository:
    ```bash 
-   git clone https://github.com/yourusername/lead_scoring_app.git
+   git clone https://github.com/wiubiki/lead_scoring_app.git
    cd lead_scoring_app
    ```
 
@@ -74,22 +75,21 @@ The Lead Scoring App is a fully functional MVP designed to streamline the lead s
 ### Handle Sensitive Files
 The app requires a `secrets.toml` file to function properly. This file is stored securely in the `app_sensitive_files` submodule.
 
-1. Create a symlink to the `secrets.toml` file:
+
+1. Make sure you have access to the private submodule. If not, contact the project maintainer.
+
+2. Create a symlink to the `secrets.toml` file:
    ```bash
    ln -s ../app_sensitive_files/.streamlit/secrets.toml .streamlit/secrets.toml
    ```
 
-2. Verify the symlink:
+3. Verify the symlink:
    ```bash
    realpath .streamlit/secrets.toml
    ```
+ 
 
-3. If using an absolute path for the symlink:
-   ```bash
-   ln -s /absolute/path/to/app_sensitive_files/.streamlit/secrets.toml .streamlit/secrets.toml
-   ``` 
-
-### Run the App Locally
+### Running the App Locally
 1. Activate your virtual environment:
    ```bash
    source lead_scoring_env/bin/activate  # Linux/MacOS
@@ -101,6 +101,30 @@ The app requires a `secrets.toml` file to function properly. This file is stored
    ```
 
 ---
+
+## Collaborator Workflow
+All contributions should be made through **feature branches** and submitted as Pull Requests (PRs) to the `dev` branch.
+
+1. **Create a Feature Branch**
+	```bash
+	git checkout dev
+	git pull origin dev
+	git checkout -b feature/your-feature-name
+
+	```
+2. **Push Your Branch**
+	```bash
+	git add .
+	git commit -m "Describe your changes"
+	git push origin feature/your-feature-name
+	
+	```
+
+3. **Submit a Pull Request (PR)**
+- Go to GitHub and open a PR from your feature branch into `dev`.
+- Assign the PR to the maintainer for review,
+- Use clear commit messages and ensure code runs before submitting.
+
 
 ## Deployment
 
