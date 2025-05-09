@@ -1,3 +1,9 @@
+"""
+Utility script for generating bcrypt password hashes.
+
+Safe to run locally. Does not store or expose any sensitive data.
+"""
+
 import bcrypt
 
 # Prompt the user for a plain-text password
