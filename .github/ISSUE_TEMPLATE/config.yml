@@ -1,0 +1,28 @@
+blank_issues_enabled: false
+contact_links: []
+issue_templates:
+  - name: "UI/UX Improvement"
+    description: "Suggest a user interface or experience improvement"
+    title: "[UI/UX]: "
+    labels: ["ui-ux"]
+    file: ui-ux.md
+  - name: "New Feature"
+    description: "Propose a new feature or capability"
+    title: "[Feature]: "
+    labels: ["new-feature"]
+    file: new-feature.md
+  - name: "Scoring Logic Enhancement"
+    description: "Improve or extend lead scoring logic"
+    title: "[Scoring]: "
+    labels: ["scoring-logic"]
+    file: scoring-logic.md
+  - name: "Bug Report"
+    description: "Report an issue with functionality or behavior"
+    title: "[Bug]: "
+    labels: ["bug"]
+    file: bug.md
+  - name: "Documentation Update"
+    description: "Propose an update or addition to documentation"
+    title: "[Docs]: "
+    labels: ["documentation"]
+    file: documentation.md
