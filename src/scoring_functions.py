@@ -123,7 +123,7 @@ def country_score(country):
         return 2
     elif country in ['United Kingdom', 'Canada', 'Australia']:
         return 1.5
-    elif country == 'Europe' and country != 'Greece':
+    elif country == 'Greece':  # accounts for trials created by Lids
         return 1
     return 0
 

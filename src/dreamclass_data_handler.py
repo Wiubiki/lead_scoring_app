@@ -20,11 +20,19 @@ def fetch_dreamclass_data(api_url, statuses):
         # Load credentials and headers from Streamlit secrets
         credentials_dict = st.secrets["dreamclass_api"]
         base_url = credentials_dict["base_url"]
-        auth_headers = ast.literal_eval(credentials_dict["auth_headers"])
+        auth_headers = json.loads(credentials_dict["auth_headers"])
+
+        # Development-only warning
+        if "Authorization" not in auth_headers:
+            print("⚠️ Warning: Missing Authorization header in auth_headers. Did you update your secrets.toml?")
 
         # Construct the API URL with selected statuses
         statuses_param = ",".join(statuses)
         request_url = f"{base_url}?statuses={statuses_param}"
+
+        #  Debug output before the API call
+        print("Final request URL:", request_url)
+        print("Final auth headers:", auth_headers)
 
         # Make the API request
         response = requests.get(request_url, headers=auth_headers)
