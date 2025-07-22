@@ -21,6 +21,9 @@ suffixes = ['jr', 'sr', 'ii', 'iii', 'iv']
 
 titles = ['admin', 'principal', 'hr', 'registrar', 'teacher', 'director', 'support']
 
+# Define miscellaneous  countries of value
+misc_countries = ['Italy', 'Germany', 'France', 'Spain', 'Slovenia', 'Greece', 'Ireland', 'New Zealand' ]
+
 # Scoring functions
 
 # Email domain score function
@@ -123,7 +126,7 @@ def country_score(country):
         return 2
     elif country in ['United Kingdom', 'Canada', 'Australia']:
         return 1.5
-    elif country == 'Greece':  # accounts for trials created by Lids
+    elif country in misc_countries  # accounts for trials created by Lids and countries with customers
         return 1
     return 0
 
