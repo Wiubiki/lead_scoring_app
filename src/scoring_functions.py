@@ -126,7 +126,7 @@ def country_score(country):
         return 2
     elif country in ['United Kingdom', 'Canada', 'Australia']:
         return 1.5
-    elif country in misc_countries  # accounts for trials created by Lids and countries with customers
+    elif country in misc_countries:  # accounts for trials created by Lids and countries with customers
         return 1
     return 0
 
