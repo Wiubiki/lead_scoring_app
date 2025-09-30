@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+import io
+import pyarrow as pa
+import pyarrow.parquet as pq
 import matplotlib.pyplot as plt
 from lead_scoring_tool import apply_lead_scoring
 from generate_summary_reports import generate_summary
@@ -63,6 +66,42 @@ else:
 # -----------------------------------------------------------------------
 
 
+# ---- downloads helpers ----
+
+
+def as_parquet_bytes(df: pd.DataFrame) -> bytes:
+    buf = io.BytesIO()
+    # (optional) cast a few columns to stable types before export
+    df2 = df.copy()
+    for col in ("email", "phone"):
+        if col in df2.columns:
+            df2[col] = df2[col].astype("string")
+    df2.to_parquet(buf, index=False, engine="pyarrow", compression="snappy")
+    return buf.getvalue()
+
+def as_csv_bytes(df: pd.DataFrame) -> bytes:
+    return df.to_csv(index=False).encode("utf-8")
+# ---------------------------
+
+
+#  ---- add parquet metadata -----
+def as_parquet_bytes_with_meta(df, meta: dict) -> bytes:
+    table = pa.Table.from_pandas(df, preserve_index=False)
+    existing = table.schema.metadata or {}
+    merged = {**{k.encode(): str(v).encode() for k, v in meta.items()}, **existing}
+    table = table.replace_schema_metadata(merged)
+    buf = io.BytesIO()
+    pq.write_table(table, buf, compression="snappy")
+    return buf.getvalue()
+
+meta = {
+    "period_start": str(period_start),
+    "period_end": str(period_end),
+    "observation_cutoff": str(observation_cutoff),
+    "scoring_version": scoring_version,
+    "env": APP_ENV,
+}
+# --------------------------
 
 # Authenticate logic
 if "authenticated" not in st.session_state:
@@ -322,6 +361,35 @@ if st.session_state["authenticated"]:
             )
         else:
             st.info("Run lead scoring to view results.")
+
+
+            # derive a safe file base name
+            try:
+                fname_base = f"scored_{period_start}_{period_end}"
+            except NameError:
+                # fallback if those vars are named differently in your code
+                from datetime import date
+                fname_base = f"scored_{date.today().isoformat()}"
+
+            # show both buttons; gate Parquet to nightly if you prefer
+            left, right = st.columns(2)
+            with left:
+                if IS_NIGHTLY:
+                    st.download_button(
+                        "Download scored leads (.parquet)",
+                        data=as_parquet_bytes(scored_df),
+                        file_name=f"{fname_base}.parquet",
+                        mime="application/octet-stream",
+                        use_container_width=True,
+                    )
+            with right:
+                st.download_button(
+                    "Download scored leads (.csv)",
+                    data=as_csv_bytes(scored_df),
+                    file_name=f"{fname_base}.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                )
 
     # Generate Summary Reports Section
 
