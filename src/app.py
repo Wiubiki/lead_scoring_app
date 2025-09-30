@@ -21,6 +21,35 @@ if IS_NIGHTLY:
     assert not ALLOW_PUBLISH, "Nightly must not allow publishing"
 
 
+# Supabase connection check
+import streamlit as st
+
+try:
+    from supabase import create_client
+except Exception:
+    st.stop()  # make sure 'supabase' is in requirements.txt
+
+def get_supabase():
+    cfg = st.secrets.get("supabase", {})
+    url, key = cfg.get("url"), cfg.get("service_key")
+    if not url or not key:
+        return None
+    return create_client(url, key)
+
+SB = get_supabase()
+
+if SB:
+    try:
+        # harmless “ping”: list buckets; empty list still means connected
+        buckets = SB.storage.list_buckets()
+        st.sidebar.success(f"Supabase connected ({len(buckets)} buckets)")
+    except Exception as e:
+        st.sidebar.error("Supabase connection failed")
+        st.exception(e)
+else:
+    st.sidebar.warning("Supabase not configured")
+
+
 
 # Authenticate logic
 if "authenticated" not in st.session_state:
