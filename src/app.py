@@ -84,24 +84,6 @@ def as_csv_bytes(df: pd.DataFrame) -> bytes:
 # ---------------------------
 
 
-#  ---- add parquet metadata -----
-def as_parquet_bytes_with_meta(df, meta: dict) -> bytes:
-    table = pa.Table.from_pandas(df, preserve_index=False)
-    existing = table.schema.metadata or {}
-    merged = {**{k.encode(): str(v).encode() for k, v in meta.items()}, **existing}
-    table = table.replace_schema_metadata(merged)
-    buf = io.BytesIO()
-    pq.write_table(table, buf, compression="snappy")
-    return buf.getvalue()
-
-meta = {
-    "period_start": str(period_start),
-    "period_end": str(period_end),
-    "observation_cutoff": str(observation_cutoff),
-    "scoring_version": scoring_version,
-    "env": APP_ENV,
-}
-# --------------------------
 
 # Authenticate logic
 if "authenticated" not in st.session_state:
