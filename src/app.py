@@ -9,6 +9,18 @@ from dreamclass_data_handler import clean_dreamclass_data
 from auth_library import authenticate
 
 
+# Enviromental flags & guards
+APP = st.secrets.get("app", {})
+ENV = APP.get("env", "prod")
+IS_NIGHTLY = ENV == "nightly"
+ALLOW_PUBLISH = APP.get("allow_publish", ENV == "prod")
+
+if IS_NIGHTLY:
+    st.sidebar.caption("🧪 NIGHTLY — not for official KPIs")
+    # Belt-and-suspenders:
+    assert not ALLOW_PUBLISH, "Nightly must not allow publishing"
+
+
 
 # Authenticate logic
 if "authenticated" not in st.session_state:
