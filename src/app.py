@@ -21,13 +21,14 @@ if IS_NIGHTLY:
     assert not ALLOW_PUBLISH, "Nightly must not allow publishing"
 
 
-# Supabase connection check
+# ---- Supabase connection check ----
 import streamlit as st
 
 try:
     from supabase import create_client
 except Exception:
-    st.stop()  # make sure 'supabase' is in requirements.txt
+    st.sidebar.error("Supabase client not installed. Add 'supabase' to requirements.txt.")
+    st.stop()
 
 def get_supabase():
     cfg = st.secrets.get("supabase", {})
@@ -37,17 +38,29 @@ def get_supabase():
     return create_client(url, key)
 
 SB = get_supabase()
+cfg = st.secrets.get("supabase", {})
+BUCKET = cfg.get("bucket", "snapshots-nightly")  # keep default or set in secrets
 
 if SB:
     try:
-        # harmless “ping”: list buckets; empty list still means connected
         buckets = SB.storage.list_buckets()
+        # works for dicts or objects depending on client version
+        names = [b.get("name") if isinstance(b, dict) else getattr(b, "name", None) for b in buckets]
+
+        # connection ping
         st.sidebar.success(f"Supabase connected ({len(buckets)} buckets)")
+
+        # bucket presence check
+        if BUCKET in names:
+            st.sidebar.success(f"Bucket '{BUCKET}' ready")
+        else:
+            st.sidebar.warning(f"Bucket '{BUCKET}' missing (expected '{BUCKET}')")
     except Exception as e:
         st.sidebar.error("Supabase connection failed")
         st.exception(e)
 else:
     st.sidebar.warning("Supabase not configured")
+# -----------------------------------------------------------------------
 
 
 
