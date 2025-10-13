@@ -333,46 +333,40 @@ if st.session_state["authenticated"]:
             # Display pie chart in Streamlit
             st.pyplot(fig)
 
+            # --- Downloads (filtered_data) ---
+            from datetime import date
 
-            # Download Button for Filtered Results
-            st.download_button(
-                label="Download Results as CSV",
-                data=filtered_data.to_csv(index=False).encode("utf-8"),
-                file_name="filtered_scoring_results.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("Run lead scoring to view results.")
-
-
-            # derive a safe file base name
             try:
-                fname_base = f"scored_{period_start}_{period_end}"
-            except NameError:
-                # fallback if those vars are named differently in your code
-                from datetime import date
+                fname_base = f"scored_{start_date.date()}_{end_date.date()}"
+            except Exception:
                 fname_base = f"scored_{date.today().isoformat()}"
 
-            # show both buttons; gate Parquet to nightly if you prefer
             left, right = st.columns(2)
             with left:
                 if IS_NIGHTLY:
                     st.download_button(
-                        "Download scored leads (.parquet)",
-                        data=as_parquet_bytes(scored_df),
+                        label="Download filtered results (.parquet)",
+                        data=as_parquet_bytes(filtered_data),
                         file_name=f"{fname_base}.parquet",
                         mime="application/octet-stream",
                         use_container_width=True,
                     )
             with right:
                 st.download_button(
-                    "Download scored leads (.csv)",
-                    data=as_csv_bytes(scored_df),
+                    label="Download filtered results (.csv)",
+                    data=as_csv_bytes(filtered_data),
                     file_name=f"{fname_base}.csv",
                     mime="text/csv",
                     use_container_width=True,
                 )
+            # -------------------------------
+        else:
+            st.info("Run lead scoring to view results.")
 
+
+
+
+            
     # Generate Summary Reports Section
 
     elif section == "Generate Summary Reports":
