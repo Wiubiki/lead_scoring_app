@@ -68,19 +68,60 @@ else:
 
 # ---- downloads helpers ----
 
+def _normalize_for_parquet(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Make all columns Arrow-friendly:
+    - Dict/List/Tuple/Set -> JSON string
+    - Mixed-type object columns -> string
+    - Force some known text columns to string
+    - Datetime -> UTC-aware
+    """
+    out = df.copy()
+
+    # Convert nested python objects to JSON strings
+    def _to_json_if_nested(v):
+        if isinstance(v, (dict, list, tuple, set)):
+            try:
+                return json.dumps(v, ensure_ascii=False, default=str)
+            except Exception:
+                return str(v)
+        return v
+
+    for col in out.columns:
+        s = out[col]
+
+        # Datetime handling
+        if pd.api.types.is_datetime64_any_dtype(s):
+            out[col] = pd.to_datetime(s, utc=True)
+            continue
+
+        # Object columns: check for nested or mixed types
+        if s.dtype == "object":
+            if s.map(lambda x: isinstance(x, (dict, list, tuple, set))).any():
+                out[col] = s.map(_to_json_if_nested).astype("string")
+            else:
+                # If multiple non-null python types appear, coerce to string
+                types = s.map(lambda x: type(x).__name__ if pd.notna(x) else "NA").unique().tolist()
+                non_na_types = [t for t in types if t != "NA"]
+                if len(non_na_types) > 1:
+                    out[col] = s.astype("string")
+
+    # Force some known textual columns to string (adjust as needed)
+    for col in ("email", "phone", "schooltype"):
+        if col in out.columns:
+            out[col] = out[col].astype("string")
+
+    return out
+
 
 def as_parquet_bytes(df: pd.DataFrame) -> bytes:
     buf = io.BytesIO()
-    # (optional) cast a few columns to stable types before export
-    df2 = df.copy()
-    for col in ("email", "phone"):
-        if col in df2.columns:
-            df2[col] = df2[col].astype("string")
-    df2.to_parquet(buf, index=False, engine="pyarrow", compression="snappy")
+    clean = _normalize_for_parquet(df)
+    table = pa.Table.from_pandas(clean, preserve_index=False)
+    pq.write_table(table, buf, compression="snappy")
     return buf.getvalue()
 
-def as_csv_bytes(df: pd.DataFrame) -> bytes:
-    return df.to_csv(index=False).encode("utf-8")
+
 # ---------------------------
 
 
