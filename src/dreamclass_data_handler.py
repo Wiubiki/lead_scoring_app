@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import streamlit as st
 import ast
+from typing import Any
 
 
 def fetch_dreamclass_data(api_url, statuses):
@@ -70,42 +71,79 @@ def parse_dc_subscription(value):
 
 
 
-def clean_dreamclass_data(raw_data):
-    """
-    Clean and process the raw DreamClass data.
-    """
-    import json
 
+
+def _parse_created_at(series: pd.Series, prefer_dayfirst: bool | None = None) -> pd.Series:
+    s = series.astype("string").str.strip()
+
+    def _try(src: pd.Series, **kw) -> pd.Series:
+        return pd.to_datetime(src, errors="coerce", utc=False, **kw)
+
+    # ISO/common first, then day-first
+    base = _try(s)
+    dfirst = _try(s, dayfirst=True)
+    dt = (dfirst.fillna(base) if prefer_dayfirst is True
+          else base.fillna(dfirst))
+
+    # 10-digit epoch seconds
+    mask10 = dt.isna() & s.str.match(r"^\d{10}(\.\d+)?$").fillna(False)
+    if mask10.any():
+        dt.loc[mask10] = pd.to_datetime(s[mask10].astype(float), unit="s", errors="coerce")
+
+    # 13-digit epoch milliseconds
+    mask13 = dt.isna() & s.str.match(r"^\d{13}$").fillna(False)
+    if mask13.any():
+        dt.loc[mask13] = pd.to_datetime(s[mask13].astype(float), unit="ms", errors="coerce")
+
+    # return naive datetimes (good for Streamlit widgets/comparisons)
+    return pd.to_datetime(dt).dt.tz_localize(None)
+
+def _parse_dc_subscription(value: Any) -> dict:
+    if isinstance(value, dict):
+        return value
+    if value is None:
+        return {}
+    # Try literal_eval safely; fall back to empty dict on malformed values
     try:
-        # Ensure createdAt is in a consistent format
-        raw_data["createdAt"] = pd.to_datetime(raw_data["createdAt"], errors="coerce").dt.strftime("%Y-%m-%d")
+        parsed = ast.literal_eval(str(value))
+        return parsed if isinstance(parsed, dict) else {}
+    except (ValueError, SyntaxError):
+        return {}
 
-        # Ensure adminLogins is an integer
-        raw_data["adminLogins"] = raw_data["adminLogins"].fillna(0).astype(int)
+def clean_dreamclass_data(raw_data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Clean and process raw DreamClass data.
+    - Keep createdAt as datetime (and add a date-only helper column)
+    - Ensure numeric adminLogins
+    - Parse dcSubscription safely; extract status & plan_name
+    - Drop unused heavy fields
+    """
+    df = raw_data.copy()
 
-        # Parse dcSubscription safely
-        def parse_dc_subscription(value):
-            # Check if the value is already a dictionary
-            if isinstance(value, dict):
-                return value
-            # If it's a string, try to parse it
-            try:
-                return ast.literal_eval(value)
-            except (ValueError, SyntaxError):
-                raise ValueError(f"Malformed dcSubscription value: {value}")
+    # createdAt: robust parsing (do NOT stringify here)
+    df["createdAt"] = _parse_created_at(df.get("createdAt", pd.Series([])))
+    df["createdAt_date"] = df["createdAt"].dt.date  # convenient for grouping
 
-        raw_data["dcSubscription_parsed"] = raw_data["dcSubscription"].apply(parse_dc_subscription)
+    # adminLogins: ensure integer
+    if "adminLogins" in df.columns:
+        df["adminLogins"] = pd.to_numeric(df["adminLogins"], errors="coerce").fillna(0).astype(int)
 
-        # Extract fields from the parsed dcSubscription
-        raw_data["status"] = raw_data["dcSubscription_parsed"].apply(lambda x: x.get("status", "unknown"))
-        raw_data["plan_name"] = raw_data["dcSubscription_parsed"].apply(lambda x: x.get("dcPlan", {}).get("name", "unknown"))
+    # dcSubscription: safe parse + field extraction
+    if "dcSubscription" in df.columns:
+        parsed = df["dcSubscription"].apply(_parse_dc_subscription)
+        df["status"] = parsed.apply(lambda x: x.get("status", "unknown"))
+        df["plan_name"] = parsed.apply(lambda x: x.get("dcPlan", {}).get("name", "unknown"))
 
-        # Drop unnecessary columns
-        raw_data = raw_data.drop(columns=["dcSubscription", "dcSubscription_parsed", "zohoLeadId", "zohoContactId", "zohoAccountId", "schemaName"], errors="ignore")
+    # Light hygiene (optional)
+    if "email" in df.columns:
+        df["email"] = df["email"].astype("string").str.strip().str.lower()
+    if "phoneNumber" in df.columns:
+        df["phoneNumber"] = df["phoneNumber"].astype("string").str.strip()
 
-        return raw_data
-    except Exception as e:
-        print(f"Error cleaning DreamClass data: {e}")
-        raise
+    # Drop heavy/unused columns
+    df = df.drop(
+        columns=["dcSubscription", "zohoLeadId", "zohoContactId", "zohoAccountId", "schemaName"],
+        errors="ignore",
+    )
 
-
+    return df
