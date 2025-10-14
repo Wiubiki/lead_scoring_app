@@ -224,7 +224,7 @@ if st.session_state["authenticated"]:
             st.error("Please select at least one status to retrieve data.")
             st.stop()
         
-        # --- Fetch and Clean DreamClass Data (updated) ---
+        # --- Fetch and Clean DreamClass Data (simple) ---
         if st.button("Fetch DreamClass Data", type="primary", use_container_width=True):
             try:
                 # 1) Fetch raw
@@ -233,17 +233,13 @@ if st.session_state["authenticated"]:
                     selected_statuses
                 )
 
-                st.caption("Raw DreamClass sample (first 25 rows)")
-                st.dataframe(raw_dreamclass_data.head(25), use_container_width=True)
-
                 # 2) Clean (keeps createdAt as datetime; no stringifying)
                 dreamclass_data = clean_dreamclass_data(raw_dreamclass_data)
 
-                # Belt-and-suspenders: ensure createdAt is datetime & naive (widgets prefer this)
+                # Ensure createdAt is datetime & naive (widgets prefer this)
                 if "createdAt" in dreamclass_data.columns and not pd.api.types.is_datetime64_any_dtype(dreamclass_data["createdAt"]):
                     dreamclass_data["createdAt"] = pd.to_datetime(dreamclass_data["createdAt"], errors="coerce")
                 if "createdAt" in dreamclass_data.columns:
-                    # make naive if tz-aware
                     try:
                         dreamclass_data["createdAt"] = dreamclass_data["createdAt"].dt.tz_localize(None)
                     except Exception:
@@ -251,40 +247,19 @@ if st.session_state["authenticated"]:
 
                 st.session_state["dreamclass_data"] = dreamclass_data
 
-                st.success("DreamClass data retrieved and cleaned successfully!")
-                st.dataframe(dreamclass_data, use_container_width=True)
+                # 3) Minimal feedback + single table
+                rows = len(dreamclass_data)
+                if "createdAt" in dreamclass_data.columns:
+                    ca = pd.to_datetime(dreamclass_data["createdAt"], errors="coerce")
+                    ca_min, ca_max = ca.min(), ca.max()
+                    st.success(f"DreamClass data retrieved ✓  Rows: {rows:,}  |  createdAt: {ca_min} → {ca_max}")
+                else:
+                    st.success(f"DreamClass data retrieved ✓  Rows: {rows:,}")
 
-                # 3) Data Retrieval Inspector (quick health checks)
-                with st.expander("🔎 Data Retrieval Inspector — DreamClass", expanded=False):
-                    df = dreamclass_data
-                    total_rows = len(df)
-                    st.write(f"Rows: **{total_rows:,}** · Columns: **{len(df.columns)}**")
+                # One simple table (cap at 1,000 for perf; adjust if you want)
+                st.dataframe(dreamclass_data.head(1000), use_container_width=True)
 
-                    if "createdAt" in df.columns:
-                        ca = pd.to_datetime(df["createdAt"], errors="coerce")
-                        parsed = (~ca.isna()).sum()
-                        st.write(
-                            f"createdAt → min: **{ca.min()}**, max: **{ca.max()}**, "
-                            f"parsed: **{parsed:,}**, NaT: **{total_rows - parsed:,}**"
-                        )
-                        daily = ca.dropna().dt.date.value_counts().sort_index()
-                        if not daily.empty:
-                            st.bar_chart(pd.Series(daily), height=120)
-
-                    with st.expander("Schema & dtypes", expanded=False):
-                        st.json({c: str(df[c].dtype) for c in df.columns})
-
-                    # quick head/tail for spot checks
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.caption("Head (10)")
-                        st.dataframe(df.head(10), use_container_width=True)
-                    with c2:
-                        st.caption("Tail (10)")
-                        st.dataframe(df.tail(10), use_container_width=True)
-
-                # 4) (Optional) remember intended run window if you've already captured it upstream
-                # If your Retrieve Data page sets st.session_state["date_min"] / ["date_max"]:
+                # (Optional) remember intended window if your date picker already set these
                 if "date_min" in st.session_state and "date_max" in st.session_state:
                     st.session_state["run_period_start"] = pd.to_datetime(st.session_state["date_min"]).date()
                     st.session_state["run_period_end"]   = pd.to_datetime(st.session_state["date_max"]).date()
@@ -292,7 +267,8 @@ if st.session_state["authenticated"]:
             except Exception as e:
                 st.error("Failed to retrieve or clean DreamClass data.")
                 st.exception(e)
-        # --- end Fetch and Clean DreamClass Data ---
+        # --- end simple block ---
+
 
         
     
