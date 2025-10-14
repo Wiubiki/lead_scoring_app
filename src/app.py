@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 import os, secrets
+import numpy as np, altair as alt
 import pyarrow as pa
 import pyarrow.parquet as pq
 import matplotlib.pyplot as plt
@@ -12,6 +13,8 @@ from dreamclass_data_handler import fetch_dreamclass_data
 from dreamclass_data_handler import clean_dreamclass_data
 from auth_library import authenticate
 from datetime import datetime, time
+from math import isnan
+
 
 # Enviromental flags & guards
 APP = st.secrets.get("app", {})
@@ -663,11 +666,7 @@ if st.session_state["authenticated"]:
             # --- end Snapshots (nightly) ---
 
             # ---- XmR for class1_pct ----
-            import pandas as pd
-            import altair as alt
-            import numpy as np
-            from math import isnan
-
+           
             st.subheader("XmR: Class 1 % over time")
 
             # Use the same df_rep you already built from SB.table("snapshots")
