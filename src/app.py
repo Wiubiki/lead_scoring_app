@@ -661,6 +661,102 @@ if st.session_state["authenticated"]:
                 st.error("Failed to load snapshots list.")
                 st.exception(e)
             # --- end Snapshots (nightly) ---
+
+            # ---- XmR for class1_pct ----
+            import pandas as pd
+            import altair as alt
+            import numpy as np
+            from math import isnan
+
+            st.subheader("XmR: Class 1 % over time")
+
+            # Use the same df_rep you already built from SB.table("snapshots")
+            df_xmr = df_rep.copy()
+
+            # Filter to current env (already done), let user choose drafts vs all
+            only_drafts = st.checkbox("Show drafts only (nightly)", value=IS_NIGHTLY)
+            if only_drafts and "is_draft" in df_xmr.columns:
+                df_xmr = df_xmr[df_xmr["is_draft"] == True]
+
+            # Require required cols
+            required = {"period_end", "class1_pct"}
+            if df_xmr.empty or not required.issubset(df_xmr.columns):
+                st.info("No snapshots with class1_pct found.")
+            else:
+                # Sort by period_end, coerce to date
+                df_xmr["period_end"] = pd.to_datetime(df_xmr["period_end"]).dt.date
+                df_xmr = df_xmr.sort_values("period_end").reset_index(drop=True)
+
+                # Build a tidy series
+                x = pd.to_numeric(df_xmr["class1_pct"], errors="coerce").astype(float)
+                idx = df_xmr["period_end"].astype(str)
+
+                # Moving range (skip first NaN)
+                mr = x.diff().abs()
+                mr_bar = mr[1:].mean() if len(mr) > 1 else np.nan
+                d2 = 1.128
+                sigma = (mr_bar / d2) if (mr_bar is not None and not isnan(mr_bar)) else 0.0
+
+                x_bar = x.mean() if len(x) else 0.0
+                ucl_x = max(0.0, min(100.0, x_bar + 3*sigma))
+                lcl_x = max(0.0, min(100.0, x_bar - 3*sigma))
+                ucl_mr = 3.267 * mr_bar if mr_bar == mr_bar else np.nan  # keep NaN if mr_bar NaN
+                lcl_mr = 0.0
+
+                plot_df = pd.DataFrame({
+                    "period_end": idx,
+                    "class1_pct": x,
+                    "mr": mr
+                })
+
+                # X chart
+                base_x = alt.Chart(plot_df).encode(x=alt.X("period_end:N", title="Period end", sort=None))
+                line_x = base_x.mark_line().encode(y=alt.Y("class1_pct:Q", title="Class 1 %"))
+                pts_x  = base_x.mark_circle(size=60).encode(
+                    y="class1_pct:Q",
+                    tooltip=[
+                        alt.Tooltip("period_end:N", title="Period end"),
+                        alt.Tooltip("class1_pct:Q", title="Class1 %", format=".2f")
+                    ]
+                )
+                rules_x = alt.Chart(pd.DataFrame({
+                    "y": [x_bar, ucl_x, lcl_x],
+                    "label": ["CL", "UCL", "LCL"]
+                })).mark_rule(strokeDash=[6,3]).encode(y="y:Q").properties(height=220)
+
+                labels_x = alt.Chart(pd.DataFrame({
+                    "y": [x_bar, ucl_x, lcl_x],
+                    "text": [f"CL {x_bar:.2f}", f"UCL {ucl_x:.2f}", f"LCL {lcl_x:.2f}"]
+                })).mark_text(align="left", dx=5, dy=-5).encode(y="y:Q", text="text:N")
+
+                x_chart = (line_x + pts_x + rules_x + labels_x).properties(title="Individuals (Class 1 %)")
+
+                # mR chart
+                base_mr = alt.Chart(plot_df).encode(x=alt.X("period_end:N", title="Period end", sort=None))
+                bar_mr  = base_mr.mark_bar().encode(y=alt.Y("mr:Q", title="Moving range"))
+                rules_mr = alt.Chart(pd.DataFrame({"y": [mr_bar, ucl_mr, lcl_mr],
+                                                "label": ["CL(mR)", "UCL(mR)", "LCL(mR)"]})
+                        ).mark_rule(strokeDash=[6,3]).encode(y="y:Q").properties(height=140)
+                labels_mr = alt.Chart(pd.DataFrame({"y": [mr_bar, ucl_mr, lcl_mr],
+                                                    "text": [f"CL {mr_bar:.2f}" if mr_bar==mr_bar else "CL -",
+                                                            f"UCL {ucl_mr:.2f}" if ucl_mr==ucl_mr else "UCL -",
+                                                            "LCL 0.00"]})
+                        ).mark_text(align="left", dx=5, dy=-5).encode(y="y:Q", text="text:N")
+
+                st.altair_chart(alt.vconcat(x_chart, (bar_mr + rules_mr + labels_mr)).resolve_scale(y='independent'), use_container_width=True)
+
+                # Tiny legend of what to look for
+                with st.expander("How to read this"):
+                    st.write(
+                        "- Points outside UCL/LCL suggest **special-cause** variation.\n"
+                        "- Runs/shifts (e.g., 8 points on one side of CL) can also signal changes; we can add rules later.\n"
+                        "- mR spikes suggest periods where the process changed sharply from the prior point."
+                    )
+            # ---- end XmR ----
+
+
+
+
         else:
             st.info("Run lead scoring to generate summary reports.")
 else:
