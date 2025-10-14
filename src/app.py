@@ -247,27 +247,35 @@ if st.session_state["authenticated"]:
 
                 st.session_state["dreamclass_data"] = dreamclass_data
 
-                # 3) Minimal feedback + single table
-                rows = len(dreamclass_data)
-                if "createdAt" in dreamclass_data.columns:
-                    ca = pd.to_datetime(dreamclass_data["createdAt"], errors="coerce")
-                    ca_min, ca_max = ca.min(), ca.max()
-                    st.success(f"DreamClass data retrieved ✓  Rows: {rows:,}  |  createdAt: {ca_min} → {ca_max}")
-                else:
-                    st.success(f"DreamClass data retrieved ✓  Rows: {rows:,}")
+                # --- show only rows in the selected date window ---
+                # Get intended window from the page's picker (you already set these earlier)
+                rp_start = pd.to_datetime(st.session_state.get("date_min")).date() if st.session_state.get("date_min") else None
+                rp_end   = pd.to_datetime(st.session_state.get("date_max")).date() if st.session_state.get("date_max") else None
 
-                # One simple table (cap at 1,000 for perf; adjust if you want)
-                st.dataframe(dreamclass_data.head(1000), use_container_width=True)
+                # If the window isn't in session (edge case), fall back to data bounds
+                if not (rp_start and rp_end):
+                    dmin = dreamclass_data["createdAt"].min()
+                    dmax = dreamclass_data["createdAt"].max()
+                    rp_start = (dmin.date() if pd.notna(dmin) else pd.Timestamp.today().date())
+                    rp_end   = (dmax.date() if pd.notna(dmax) else pd.Timestamp.today().date())
 
-                # (Optional) remember intended window if your date picker already set these
-                if "date_min" in st.session_state and "date_max" in st.session_state:
-                    st.session_state["run_period_start"] = pd.to_datetime(st.session_state["date_min"]).date()
-                    st.session_state["run_period_end"]   = pd.to_datetime(st.session_state["date_max"]).date()
+                mask = (dreamclass_data["createdAt"].dt.date >= rp_start) & (dreamclass_data["createdAt"].dt.date <= rp_end)
+                in_window = dreamclass_data.loc[mask].copy()
+                st.session_state["dreamclass_data_in_window"] = in_window  # handy for next steps
 
-            except Exception as e:
-                st.error("Failed to retrieve or clean DreamClass data.")
-                st.exception(e)
-        # --- end simple block ---
+                total = len(dreamclass_data)
+                n_win = len(in_window)
+                win_min = in_window["createdAt"].min() if n_win else None
+                win_max = in_window["createdAt"].max() if n_win else None
+
+                st.success(
+                    f"DreamClass data retrieved ✓  Total rows: {total:,}  |  In selected period ({rp_start} → {rp_end}): {n_win:,} "
+                    + (f"({win_min} → {win_max})" if n_win else "(no rows in this window)")
+                )
+
+                # Show only the in-window table (cap rows for speed)
+                st.dataframe(in_window.head(1000), use_container_width=True)
+                # --- end show window ---
 
 
         
