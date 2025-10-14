@@ -121,7 +121,8 @@ def as_parquet_bytes(df: pd.DataFrame) -> bytes:
     pq.write_table(table, buf, compression="snappy")
     return buf.getvalue()
 
-
+def as_csv_bytes(df: pd.DataFrame) -> bytes:
+    return df.to_csv(index=False).encode("utf-8")
 # ---------------------------
 
 
