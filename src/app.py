@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import os, secrets
 import pyarrow as pa
 import pyarrow.parquet as pq
 import matplotlib.pyplot as plt
@@ -10,7 +11,7 @@ from ga_data_retrieval import fetch_ga_data
 from dreamclass_data_handler import fetch_dreamclass_data 
 from dreamclass_data_handler import clean_dreamclass_data
 from auth_library import authenticate
-
+from datetime import datetime, time
 
 # Enviromental flags & guards
 APP = st.secrets.get("app", {})
@@ -402,6 +403,91 @@ if st.session_state["authenticated"]:
                     use_container_width=True,
                 )
             # -------------------------------
+
+
+            # Save data snashot to supabase
+            try:
+                from zoneinfo import ZoneInfo  # py3.9+
+            except Exception:
+                from backports.zoneinfo import ZoneInfo
+
+            # --- helpers for KPIs + path ---
+            def compute_kpis(df: pd.DataFrame):
+                total = int(len(df))
+                def cnt(c):
+                    return int(df.loc[df["lead_class"] == c].shape[0]) if "lead_class" in df.columns else 0
+                def pct(n):
+                    return round(100.0 * n / total, 2) if total else 0.0
+                c1 = cnt(1); c2 = cnt(2); c3 = cnt(3)
+                return dict(
+                    total_leads=total,
+                    class1_count=c1, class1_pct=pct(c1),
+                    class2_count=c2, class2_pct=pct(c2),
+                    class3_count=c3, class3_pct=pct(c3),
+                )
+
+            def make_parquet_path(period_end: datetime.date, run_type: str, fname_hint: str = ""):
+                run_id = secrets.token_hex(8)
+                base = f"{period_end:%Y/%m/%d}/{run_type}/{run_id}"
+                if fname_hint:
+                    return f"{base}_{fname_hint}.parquet"
+                return f"{base}.parquet"
+
+            # --- UI: Save Snapshot (draft) ---
+            st.divider()
+            st.subheader("Save Snapshot (draft)")
+
+            left_action, right_action = st.columns([1,1])
+            with left_action:
+                save_btn = st.button("Save snapshot (draft)", type="primary", use_container_width=True)
+            with right_action:
+                note = st.text_input("Optional note", value="", help="Short reason or context")
+
+            if save_btn:
+                try:
+                    # 1) Derive period & cutoff
+                    tz = st.secrets.get("app", {}).get("timezone", "Europe/Athens")
+                    cutoff = datetime.combine(end_date, time(23,59,59)).replace(tzinfo=ZoneInfo(tz))
+
+                    # 2) Upload Parquet to Supabase Storage
+                    cfg = st.secrets["supabase"]
+                    bucket = cfg.get("bucket", "snapshots-nightly")
+                    # use a readable hint in filename (optional)
+                    fname_hint = f"{start_date}_{end_date}"
+                    path = make_parquet_path(end_date, run_type="manual", fname_hint=fname_hint)
+                    bytes_parquet = as_parquet_bytes(filtered_data)
+                    SB.storage.from_(bucket).upload(path, bytes_parquet, {
+                        "content-type": "application/octet-stream",
+                        "x-upsert": "true"
+                    })
+
+                    # 3) Compute KPIs
+                    kpis = compute_kpis(filtered_data)
+
+                    # 4) Insert row in snapshots as DRAFT
+                    app_env = st.secrets["app"]["env"]
+                    scoring_version = st.secrets.get("app", {}).get("scoring_version", "3.0.0")
+                    created_by = "aristeidis"  # set your display name/email as you prefer
+
+                    row = {
+                        "created_by": created_by,
+                        "run_type": "manual",
+                        "is_draft": True,
+                        "period_start": str(start_date),
+                        "period_end": str(end_date),
+                        "observation_cutoff": cutoff.isoformat(),
+                        "scoring_version": scoring_version,
+                        "env": app_env,
+                        "reason": (note or None),
+                        "parquet_path": path,
+                        **kpis
+                    }
+                    SB.table("snapshots").insert(row).execute()
+                    st.toast("Snapshot saved (draft). Check Reports.", icon="✅")
+                except Exception as e:
+                    st.error("Failed to save snapshot (draft).")
+                    st.exception(e)
+                #-----------------------------------------------------------------
         else:
             st.info("Run lead scoring to view results.")
 
@@ -486,6 +572,95 @@ if st.session_state["authenticated"]:
                         )
                     except Exception as e:
                         st.error(f"An error occurred: {e}")
+
+            # View snapshot reports
+            st.subheader("Saved snapshots")
+
+            try:
+                # fetch latest snapshots for this environment
+                q = (
+                    SB.table("snapshots")
+                    .select("*")
+                    .eq("env", st.secrets["app"]["env"])  # "nightly" or "prod"
+                    .order("created_at", desc=True)
+                    .limit(200)
+                    .execute()
+                )
+                df_rep = pd.DataFrame(q.data)
+
+                if df_rep.empty:
+                    st.info("No snapshots yet. Save a snapshot from View Results.")
+                else:
+                    # Optional: show only drafts in nightly
+                    show_drafts_only = st.checkbox("Show drafts only", value=True if IS_NIGHTLY else False)
+                    if show_drafts_only:
+                        df_rep = df_rep[df_rep["is_draft"] == True]
+
+                    # nice, compact set of columns to display
+                    cols = [
+                        "created_at","created_by","run_type","is_draft",
+                        "period_start","period_end","scoring_version",
+                        "total_leads","class1_count","class1_pct",
+                        "class2_count","class2_pct","class3_count","class3_pct",
+                        "parquet_path","reason"
+                    ]
+                    cols = [c for c in cols if c in df_rep.columns]
+                    st.dataframe(df_rep[cols], use_container_width=True)
+
+                    # (optional) select one snapshot to preview / download
+                    with st.expander("Open a snapshot"):
+                        # pick from most recent 50 for convenience
+                        options = df_rep.head(50).apply(
+                            lambda r: f"{r['created_at']} | {r['period_start']}→{r['period_end']} | {'DRAFT' if r['is_draft'] else r['run_type'].upper()}",
+                            axis=1
+                        ).tolist()
+                        idx = st.selectbox("Choose snapshot", options=options, index=0)
+                        row = df_rep.iloc[options.index(idx)]
+                        st.write("Storage path:", row["parquet_path"])
+
+                        # preview top rows (Parquet or CSV) using the storage API
+                        try:
+                            path = row["parquet_path"]
+                            bucket = st.secrets["supabase"].get("bucket","snapshots-nightly")
+                            # download file bytes from storage
+                            file_bytes = SB.storage.from_(bucket).download(path)
+                            # try parquet, fall back to csv
+                            import io, pandas as pd
+                            try:
+                                import pyarrow.parquet as pq
+                                df_preview = pd.read_parquet(io.BytesIO(file_bytes))
+                            except Exception:
+                                df_preview = pd.read_csv(io.BytesIO(file_bytes))
+                            st.caption(f"Preview: {len(df_preview)} rows (showing first 20)")
+                            st.dataframe(df_preview.head(20), use_container_width=True)
+
+                            # quick download buttons (re-serve bytes)
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.download_button(
+                                    "Download snapshot file",
+                                    data=file_bytes,
+                                    file_name=path.split("/")[-1],
+                                    mime="application/octet-stream",
+                                    use_container_width=True,
+                                )
+                            with c2:
+                                # also offer CSV on the fly (small previews only—ok for testing)
+                                st.download_button(
+                                    "Download as CSV (repacked)",
+                                    data=df_preview.to_csv(index=False).encode("utf-8"),
+                                    file_name=path.split("/")[-1].replace(".parquet",".csv"),
+                                    mime="text/csv",
+                                    use_container_width=True,
+                                )
+                        except Exception as e:
+                            st.error("Failed to open snapshot from storage.")
+                            st.exception(e)
+
+            except Exception as e:
+                st.error("Failed to load snapshots list.")
+                st.exception(e)
+            # --- end Snapshots (nightly) ---
         else:
             st.info("Run lead scoring to generate summary reports.")
 else:
