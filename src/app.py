@@ -224,19 +224,19 @@ if st.session_state["authenticated"]:
             st.error("Please select at least one status to retrieve data.")
             st.stop()
         
-        # --- Fetch and Clean DreamClass Data (simple) ---
+        # --- Fetch and Clean DreamClass Data (simple + windowed view) ---
         if st.button("Fetch DreamClass Data", type="primary", use_container_width=True):
             try:
                 # 1) Fetch raw
                 raw_dreamclass_data = fetch_dreamclass_data(
                     st.secrets["dreamclass_api"]["base_url"],
-                    selected_statuses
+                    selected_statuses,
                 )
 
                 # 2) Clean (keeps createdAt as datetime; no stringifying)
                 dreamclass_data = clean_dreamclass_data(raw_dreamclass_data)
 
-                # Ensure createdAt is datetime & naive (widgets prefer this)
+                # Ensure createdAt is datetime & naive
                 if "createdAt" in dreamclass_data.columns and not pd.api.types.is_datetime64_any_dtype(dreamclass_data["createdAt"]):
                     dreamclass_data["createdAt"] = pd.to_datetime(dreamclass_data["createdAt"], errors="coerce")
                 if "createdAt" in dreamclass_data.columns:
@@ -245,14 +245,14 @@ if st.session_state["authenticated"]:
                     except Exception:
                         pass
 
+                # Save full dataset (pipeline may need it)
                 st.session_state["dreamclass_data"] = dreamclass_data
 
-                # --- show only rows in the selected date window ---
-                # Get intended window from the page's picker (you already set these earlier)
+                # 3) Show only rows in the selected date window
                 rp_start = pd.to_datetime(st.session_state.get("date_min")).date() if st.session_state.get("date_min") else None
                 rp_end   = pd.to_datetime(st.session_state.get("date_max")).date() if st.session_state.get("date_max") else None
 
-                # If the window isn't in session (edge case), fall back to data bounds
+                # Fallback to data bounds if picker values missing
                 if not (rp_start and rp_end):
                     dmin = dreamclass_data["createdAt"].min()
                     dmax = dreamclass_data["createdAt"].max()
@@ -261,7 +261,7 @@ if st.session_state["authenticated"]:
 
                 mask = (dreamclass_data["createdAt"].dt.date >= rp_start) & (dreamclass_data["createdAt"].dt.date <= rp_end)
                 in_window = dreamclass_data.loc[mask].copy()
-                st.session_state["dreamclass_data_in_window"] = in_window  # handy for next steps
+                st.session_state["dreamclass_data_in_window"] = in_window
 
                 total = len(dreamclass_data)
                 n_win = len(in_window)
@@ -269,13 +269,22 @@ if st.session_state["authenticated"]:
                 win_max = in_window["createdAt"].max() if n_win else None
 
                 st.success(
-                    f"DreamClass data retrieved ✓  Total rows: {total:,}  |  In selected period ({rp_start} → {rp_end}): {n_win:,} "
+                    f"DreamClass data retrieved ✓  Total rows: {total:,}  |  "
+                    f"In selected period ({rp_start} → {rp_end}): {n_win:,} "
                     + (f"({win_min} → {win_max})" if n_win else "(no rows in this window)")
                 )
 
-                # Show only the in-window table (cap rows for speed)
+                # One simple table (cap for speed)
                 st.dataframe(in_window.head(1000), use_container_width=True)
-                # --- end show window ---
+
+                # Remember intended window for later pages
+                st.session_state["run_period_start"] = rp_start
+                st.session_state["run_period_end"]   = rp_end
+
+            except Exception as e:
+                st.error("Failed to retrieve or clean DreamClass data.")
+                st.exception(e)
+        # --- end Fetch and Clean DreamClass Data ---
 
 
         
