@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import io
 import os, secrets
-import numpy as np, altair as alt
+import numpy as np
+import altair as alt
 import pyarrow as pa
 import pyarrow.parquet as pq
 import matplotlib.pyplot as plt
