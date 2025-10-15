@@ -128,10 +128,37 @@ def as_csv_bytes(df: pd.DataFrame) -> bytes:
 
 # 2.2 Inclusive date-range filtering (by date, not time)
 
-def filter_by_period(df: pd.DataFrame, col: str, start_d: date, end_d: date) -> pd.DataFrame:
-    if not pd.api.types.is_datetime64_any_dtype(df[col]):
-        df[col] = pd.to_datetime(df[col], errors="coerce")
-    return df[df[col].dt.date.between(start_d, end_d)]
+def filter_by_period(df: pd.DataFrame, col: str, start_d, end_d) -> pd.DataFrame:
+    """
+    Inclusive filter by calendar date, regardless of time or timezone.
+    Accepts start_d/end_d as date or str.
+    """
+    s = df[col]
+
+    # Coerce to datetime
+    if not pd.api.types.is_datetime64_any_dtype(s):
+        s = pd.to_datetime(s, errors="coerce", utc=False)
+
+    # Drop timezone if present (e.g., datetime64[ns, UTC])
+    try:
+        if getattr(s.dtype, "tz", None) is not None:
+            s = s.dt.tz_localize(None)
+    except Exception:
+        try:
+            s = s.dt.tz_localize(None)
+        except Exception:
+            pass
+
+    # Normalize inputs
+    if isinstance(start_d, str):
+        start_d = pd.to_datetime(start_d).date()
+    if isinstance(end_d, str):
+        end_d = pd.to_datetime(end_d).date()
+
+    df2 = df.copy()
+    df2[col] = s
+    return df2[df2[col].dt.date.between(start_d, end_d)]
+
 
 # 2.3 KPIs
 
@@ -336,6 +363,11 @@ elif section == "Run Scoring":
 
     d1 = st.session_state.get("run_period_start")
     d2 = st.session_state.get("run_period_end")
+    # normalize in case something stored them as strings earlier
+    if isinstance(d1, str):
+        d1 = pd.to_datetime(d1).date()
+    if isinstance(d2, str):
+        d2 = pd.to_datetime(d2).date()
     dc = st.session_state.get("dreamclass_data")
     ga = st.session_state.get("ga_data")
 
