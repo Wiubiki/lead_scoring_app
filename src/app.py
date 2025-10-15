@@ -801,6 +801,101 @@ if st.session_state["authenticated"]:
                     )
             # ---- end XmR ----
 
+            # ---- Retro backfill: create aggregate-only snapshots for two missing periods ----
+            import io, pandas as pd, pyarrow as pa, pyarrow.parquet as pq
+            from datetime import datetime, date, time
+            try:
+                from zoneinfo import ZoneInfo
+            except Exception:
+                from backports.zoneinfo import ZoneInfo
+
+            def _parquet_bytes_from_aggregates(period_start: date, period_end: date, counts: dict, pcts: dict) -> bytes:
+                # Make a tiny, self-describing table (4 rows: one per class)
+                rows = []
+                total = sum(counts.values())
+                for c in (1, 2, 3, 4):
+                    rows.append({
+                        "period_start": str(period_start),
+                        "period_end": str(period_end),
+                        "class": c,
+                        "count": int(counts.get(c, 0)),
+                        "pct": float(pcts.get(c, 0.0)),
+                        "total_leads": total,
+                        "source": "retro-manual-aggregate"
+                    })
+                df = pd.DataFrame(rows)
+                table = pa.Table.from_pandas(df, preserve_index=False)
+                # add some file-level metadata (nice-to-have)
+                md = {
+                    b"env": str(st.secrets["app"]["env"]).encode(),
+                    b"scoring_version": str(st.secrets.get("app", {}).get("scoring_version", "3.0.0")).encode(),
+                    b"note": b"Backfilled from spreadsheet; aggregate-only (no per-lead rows)."
+                }
+                table = table.replace_schema_metadata({**(table.schema.metadata or {}), **md})
+                buf = io.BytesIO()
+                pq.write_table(table, buf, compression="snappy")
+                return buf.getvalue()
+
+            def _register_snapshot(period_start: str, period_end: str, counts: dict, pcts: dict, note: str):
+                # prep dates
+                ps = pd.to_datetime(period_start).date()
+                pe = pd.to_datetime(period_end).date()
+                tz = st.secrets.get("app", {}).get("timezone", "Europe/Athens")
+                cutoff = datetime.combine(pe, time(23, 59, 59)).replace(tzinfo=ZoneInfo(tz))
+
+                # parquet path in nightly bucket
+                bucket = st.secrets["supabase"].get("bucket", "snapshots-nightly")
+                fname = f"manual_agg_{ps}_{pe}.parquet"
+                path = f"{pe:%Y/%m/%d}/manual/{fname}"
+
+                # upload Parquet
+                file_bytes = _parquet_bytes_from_aggregates(ps, pe, counts, pcts)
+                SB.storage.from_(bucket).upload(path, file_bytes, {
+                    "content-type": "application/octet-stream",
+                    "x-upsert": "true"
+                })
+
+                # compute snapshot row (KPIs)
+                total = int(sum(counts.values()))
+                row = {
+                    "created_by": "aristeidis",
+                    "run_type": "manual",
+                    "is_draft": True,
+                    "period_start": str(ps),
+                    "period_end": str(pe),
+                    "observation_cutoff": cutoff.isoformat(),
+                    "scoring_version": st.secrets.get("app", {}).get("scoring_version", "3.0.0"),
+                    "env": st.secrets["app"]["env"],
+                    "reason": f"retro backfill — {note}",
+                    "parquet_path": path,
+                    "total_leads": total,
+                    "class1_count": int(counts.get(1, 0)), "class1_pct": float(pcts.get(1, 0.0)),
+                    "class2_count": int(counts.get(2, 0)), "class2_pct": float(pcts.get(2, 0.0)),
+                    "class3_count": int(counts.get(3, 0)), "class3_pct": float(pcts.get(3, 0.0)),
+                    "class4_count": int(counts.get(4, 0)), "class4_pct": float(pcts.get(4, 0.0)),
+                }
+                SB.table("snapshots").insert(row).execute()
+                st.toast(f"Backfilled {ps} → {pe}", icon="✅")
+
+            with st.expander("Backfill missing June–July snapshots (aggregate-only)", expanded=False):
+                st.write("Creates aggregate-only Parquet + registers snapshots so XmR has points for these periods.")
+
+                if st.button("Backfill 2025-06-22 → 2025-07-05", use_container_width=True):
+                    _register_snapshot(
+                        "2025-06-22", "2025-07-05",
+                        counts={1: 66, 2: 124, 3: 73, 4: 33},
+                        pcts={1: 22.30, 2: 41.89, 3: 24.66, 4: 11.15},
+                        note="spreadsheet aggregates (no per-lead rows)"
+                    )
+
+                if st.button("Backfill 2025-07-06 → 2025-07-19", use_container_width=True):
+                    _register_snapshot(
+                        "2025-07-06", "2025-07-19",
+                        counts={1: 67, 2: 122, 3: 74, 4: 31},
+                        pcts={1: 22.79, 2: 41.50, 3: 25.17, 4: 10.54},
+                        note="spreadsheet aggregates (no per-lead rows)"
+                    )
+            # ---- end retro backfill ----
 
 
 
