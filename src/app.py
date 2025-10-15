@@ -130,34 +130,38 @@ def as_csv_bytes(df: pd.DataFrame) -> bytes:
 
 def filter_by_period(df: pd.DataFrame, col: str, start_d, end_d) -> pd.DataFrame:
     """
-    Inclusive filter by calendar date, regardless of time or timezone.
-    Accepts start_d/end_d as date or str.
+    Inclusive calendar-date filter using half-open Timestamps:
+    [start 00:00:00, end+1day 00:00:00).
+    Works regardless of tz-awareness or time-of-day in `df[col]`.
+    Accepts start_d/end_d as date, str, or Timestamp.
     """
+    # Normalize inputs to midnight Timestamps (tz-naive)
+    start_ts = pd.Timestamp(pd.to_datetime(start_d).date())
+    end_next = pd.Timestamp(pd.to_datetime(end_d).date()) + pd.Timedelta(days=1)
+
     s = df[col]
 
-    # Coerce to datetime
+    # Coerce to datetime if needed
     if not pd.api.types.is_datetime64_any_dtype(s):
         s = pd.to_datetime(s, errors="coerce", utc=False)
 
-    # Drop timezone if present (e.g., datetime64[ns, UTC])
+    # Strip timezone if present
     try:
         if getattr(s.dtype, "tz", None) is not None:
-            s = s.dt.tz_localize(None)
+            # tz-aware -> make naive
+            s = s.dt.tz_convert(None)
     except Exception:
+        # if tz_localize(None) is the one that works in your case
         try:
             s = s.dt.tz_localize(None)
         except Exception:
             pass
 
-    # Normalize inputs
-    if isinstance(start_d, str):
-        start_d = pd.to_datetime(start_d).date()
-    if isinstance(end_d, str):
-        end_d = pd.to_datetime(end_d).date()
-
     df2 = df.copy()
     df2[col] = s
-    return df2[df2[col].dt.date.between(start_d, end_d)]
+    # Half-open interval to include the entire end date
+    return df2[(df2[col] >= start_ts) & (df2[col] < end_next)]
+
 
 
 # 2.3 KPIs
