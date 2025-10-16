@@ -27,9 +27,10 @@ test_env/
 *.swp
 .DS_Store
 
-# Ignore input and output data folders
+# Ignore deprecated, input and output data folders
 input_files/
 output_files/
+deprecated/
 
 # Ignore Streamlit temporary files
 .streamlit/
