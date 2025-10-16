@@ -375,18 +375,19 @@ elif section == "Run Scoring":
     dc = st.session_state.get("dreamclass_data")
     ga = st.session_state.get("ga_data")
 
-    # Inclusive filters
+    # Inclusive filter: DreamClass only (GA already filtered by API)
     dc_f = filter_by_period(dc, "createdAt", d1, d2)
+
+    # GA: don't re-filter by date; just normalize for the scorer
     if isinstance(ga, pd.DataFrame) and not ga.empty:
-        # Replace with your GA date column if different
-        ga_date_col = "event_date" if "event_date" in ga.columns else ga.columns[0]
-        ga_f = filter_by_period(ga, ga_date_col, d1, d2)
+        ga_f = normalize_ga_for_scoring(ga)
     else:
         ga_f = None
 
     st.write(f"DreamClass rows in period: {len(dc_f):,}")
     if ga_f is not None:
-        st.write(f"GA rows in period: {len(ga_f):,}")
+        st.write(f"GA rows (from API date range): {len(ga_f):,}")
+
 
     scored_df = apply_lead_scoring(dc_f, ga_f)
     st.session_state["scored_data"] = scored_df
