@@ -248,6 +248,42 @@ def render_xmr_class1(df_rep: pd.DataFrame, *, drafts_only: bool) -> None:
         use_container_width=True,
     )
 
+# 2.5 Small normalizer so GA matches what apply_lead_scoring expects
+def normalize_ga_for_scoring(ga: pd.DataFrame) -> pd.DataFrame:
+    """
+    Make sure GA has the exact fields the scorer expects:
+      - userId
+      - Country             (capital C)
+      - icpGroup
+      - First user source / medium
+    We *add* these from your GA API fields (do not drop originals).
+    """
+    g = ga.copy()
+
+    # userId from GA API
+    if "userId" not in g.columns and "customUser:userId" in g.columns:
+        g["userId"] = g["customUser:userId"]
+
+    # Country (capital C) from GA API 'country'
+    if "Country" not in g.columns and "country" in g.columns:
+        g["Country"] = g["country"]
+
+    # icpGroup from GA API 'customUser:icpGroup'
+    if "icpGroup" not in g.columns and "customUser:icpGroup" in g.columns:
+        g["icpGroup"] = g["customUser:icpGroup"]
+
+    # First user source / medium from GA API 'firstUserSourceMedium'
+    if "First user source / medium" not in g.columns and "firstUserSourceMedium" in g.columns:
+        g["First user source / medium"] = g["firstUserSourceMedium"]
+
+    # tidy types
+    for c in ["userId", "Country", "icpGroup", "First user source / medium"]:
+        if c in g.columns:
+            g[c] = g[c].astype("string").str.strip()
+
+    return g
+    
+
 # =============================================================
 # 3) AUTH + NAVIGATION
 # =============================================================
