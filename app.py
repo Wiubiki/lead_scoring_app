@@ -39,6 +39,12 @@ if authenticate:
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Scoring", "Results", "Reports"])
 
+# allow programmatic navigation from pages (e.g., scoring_page sets st.session_state["nav"])
+nav_override = st.session_state.get("nav")
+if nav_override and nav_override in ["Scoring", "Results", "Reports"]:
+    page = nav_override
+    st.session_state["nav"] = None  # clear after one use
+
 if page == "Scoring":
     render_scoring()
 elif page == "Results":

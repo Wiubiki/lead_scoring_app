@@ -15,6 +15,12 @@ import pandas as pd
 
 from scoring.scoring_logic import join_dc_ga, add_class_column, add_class_percent
 
+
+try:
+    import streamlit as st
+except Exception:
+    st = None
+
 # --------- Public API ----------------------------------------------------------
 
 def apply(
@@ -92,9 +98,21 @@ _CANDIDATE_SCORERS = [
     ("scoring.existing", "compute_lead_score"),
     ("scoring.existing", "score_row"),
     ("scoring.v2_scorer", "compute_score"),
+    ("scoring.simple_scorer", "compute_score"),  # <— fallback
 ]
 
 def _discover_existing_scorer() -> Callable[[pd.Series], float]:
+     # secrets override: [app].score_fn = "module.path:function"
+    if st is not None:
+        sf = dict(st.secrets).get("app", {}).get("score_fn")
+        if sf:
+            mod, _, fn = sf.partition(":")
+            if not fn:
+                raise RuntimeError("[scoring] app.score_fn must be 'module.path:function'")
+            module = importlib.import_module(mod)
+            cand = getattr(module, fn)
+            if callable(cand):
+                return cand
     """
     Try known module/function pairs to keep existing scoring intact.
     If nothing is found, raise a clear, actionable error guiding the developer.

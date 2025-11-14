@@ -1,131 +1,136 @@
-# data/dreamclass_handler.py
-# Purpose: Fetch + clean DreamClass data and return a normalized DC_norm dataframe.
-# Notes:
-# - Trusts this module for ALL DC renaming/normalization (no renames elsewhere).
-# - Fails fast (clear message) if any required columns are missing (via schema_contracts).
-# - Only filters by DreamClass.status; GA date filtering remains GA-side.
-# - Keep changes incremental and heavily commented for PR review.
-
-from __future__ import annotations
-
-import os
-from typing import Iterable, List, Dict, Any, Optional
+# data/dreamclass_handler.py (patch)
+import os, json
 import pandas as pd
 import requests
 from urllib.parse import urljoin
-
 from data.schema_contracts import validate_dc_columns
 
-# ---- Helpers -----------------------------------------------------------------
 
-def _infer_org_from_email(email: Optional[str]) -> Optional[str]:
-    """Extract organization from email domain (e.g., 'alice@acme.com' -> 'acme')."""
-    if not email or "@" not in email:
-        return None
+# data/dreamclass_handler.py (top-level constants)
+ALL_STATUSES = [
+    "trial", "trial_expired", "dc_incomplete", "incomplete",
+    "incomplete_expired", "active", "past_due", "canceled",
+    "locked_out", "unpaid",
+]
+
+DEFAULT_STATUSES = ["trial", "trial_expired", "active", "canceled"]
+
+
+def _get_dc_secrets():
     try:
-        domain = email.split("@", 1)[1]
-        # take first label (acme from acme.com); keep alnum and hyphen/underscore
-        org = domain.split(".")[0]
-        return org.strip()
+        import streamlit as st
+        s = st.secrets["dreamclass_api"]
+        return s["base_url"], json.loads(s["auth_headers"])
+    except Exception as e:
+        raise RuntimeError("[DC_norm] Missing or invalid [dreamclass_api] in secrets.toml") from e
+
+def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
+    """
+    Exact revival of old DreamClass flow:
+      - GET {base_url}?statuses=trial,trial_expired,active,canceled
+      - headers from [dreamclass_api].auth_headers (JSON string) in secrets
+      - parse/clean dcSubscription -> status, plan_name
+      - normalize required columns and validate (names only)
+    """
+    import json, ast
+
+    # 1) Secrets & request setup (use your existing keys verbatim)
+    def _secrets():
+        try:
+            import streamlit as st
+            return dict(st.secrets).get("dreamclass_api", {})
+        except Exception:
+            return {}
+    cfg = _secrets()
+    endpoint = (base_url or cfg.get("base_url", "")).strip()
+    if not endpoint:
+        raise RuntimeError("[DC_norm] Missing dreamclass_api.base_url in secrets.toml")
+
+    raw_headers = cfg.get("auth_headers", "{}")
+    try:
+        headers = json.loads(raw_headers)
     except Exception:
-        return None
+        headers = {}
+    headers.setdefault("Accept", "application/json")
 
-def _ensure_tz_naive(series: pd.Series) -> pd.Series:
-    """Ensure datetimes are tz-naive (required by downstream logic)."""
-    s = pd.to_datetime(series, errors="coerce", utc=True)
-    # drop tz info to make naive
-    return s.dt.tz_convert(None) if hasattr(s.dt, "tz_convert") else s.dt.tz_localize(None)
+    # 2) Statuses (hardcoded defaults unless explicitly passed)
+    use_statuses = DEFAULT_STATUSES if statuses is None else list(statuses)
+    request_url = f"{endpoint}?statuses={','.join(use_statuses)}"
 
-# ---- Public API ---------------------------------------------------------------
-
-def fetch_and_clean(base_url: str, statuses: Iterable[str]) -> pd.DataFrame:
-    """
-    Fetch DreamClass users and return a normalized dataframe with stable columns.
-
-    Expected output columns (names-only validation in schema_contracts):
-      - userId (from 'id')
-      - email
-      - name
-      - organization (derived from email domain)
-      - adminLogins
-      - status
-      - createdAt (tz-naive)
-
-    Parameters
-    ----------
-    base_url : str
-        Base API URL for DreamClass (e.g., https://api.example.com/).
-        The code uses GET {base_url}/users (adjust path if your current dev repo differs).
-    statuses : Iterable[str]
-        Status filters applied on the API side (inclusive). Example: ["trialing", "active"].
-
-    Returns
-    -------
-    pd.DataFrame
-        DC_norm dataframe, validated and ready for scoring joins.
-    """
-    # --- Build request ---------------------------------------------------------
-    # Adjust endpoint if your current repo uses a different path, e.g. "/admin/users"
-    endpoint = urljoin(base_url.rstrip("/") + "/", "users")
-
-    # Auth: prefer DC_API_KEY if present, else allow unauthenticated (nightly will fail fast if needed).
-    api_key = os.getenv("DC_API_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # fallback if your backend proxies
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-
-    # Query params: keep simple & explicit; adapt to your backend (e.g., `status=in.(a,b)` for PostgREST).
-    # For now, pass repeated 'status' params so the backend can OR them.
-    params: List[tuple[str, str]] = [("limit", "10000")]  # crude cap; tune/ paginate if needed
-    for st in statuses:
-        params.append(("status", str(st)))
-
-    # --- Fetch (single-shot; add pagination if your API pages results) ---------
-    resp = requests.get(endpoint, headers=headers, params=params, timeout=30)
+    # 3) Fetch (GET)
+    resp = requests.get(request_url, headers=headers, timeout=30)
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
         raise RuntimeError(
-            f"[DC_norm] HTTP error while fetching DreamClass users: {e}\n"
+            f"[DC_norm] HTTP error while fetching DreamClass accounts: {e}\n"
             f"URL: {resp.request.url}\nStatus: {resp.status_code}\nBody: {resp.text[:500]}"
         ) from e
 
-    payload: Any = resp.json()
-    if not isinstance(payload, list):
-        raise ValueError(f"[DC_norm] Unexpected response shape (expected list): {type(payload)}")
+    raw = resp.json()
+    if isinstance(raw, dict) and "data" in raw:
+        raw = raw["data"]
 
-    raw_df = pd.DataFrame(payload)
-
-    # --- Minimal defensive checks before transform -----------------------------
-    if raw_df.empty:
-        # Return an empty, correctly-shaped frame so downstream UI doesn’t explode
-        empty = pd.DataFrame(
-            columns=["userId", "email", "name", "organization", "adminLogins", "status", "createdAt"]
-        )
+    df = pd.DataFrame(raw)
+    if df.empty:
+        # return empty but correctly-shaped frame (keeps UI from exploding)
+        empty = pd.DataFrame(columns=["userId","email","name","organization","adminLogins","status","createdAt"])
         return validate_dc_columns(empty)
 
-    # --- Normalize column names/values -----------------------------------------
-    df = raw_df.copy()
+    # 4) Clean exactly like the old cleaner
+    # createdAt -> yyyy-mm-dd (tz-naive ok)
+    df["createdAt"] = pd.to_datetime(df.get("createdAt"), errors="coerce").dt.tz_localize(None).dt.strftime("%Y-%m-%d")
 
-    # 1) id -> userId (join key with GA.userId)
-    if "id" in df.columns and "userId" not in df.columns:
-        df = df.rename(columns={"id": "userId"})
-
-    # 2) Ensure we have expected raw fields; fail fast later if still missing.
-    #    Compute organization from email domain.
-    if "organization" not in df.columns:
-        df["organization"] = df.get("email").apply(_infer_org_from_email) if "email" in df.columns else None
-
-    # 3) createdAt -> tz-naive
-    if "createdAt" in df.columns:
-        df["createdAt"] = _ensure_tz_naive(df["createdAt"])
-
-    # 4) Coerce adminLogins to integer where possible (keep names-only validator strict)
+    # adminLogins -> int
     if "adminLogins" in df.columns:
-        df["adminLogins"] = pd.to_numeric(df["adminLogins"], errors="coerce").fillna(0).astype("Int64")
+        df["adminLogins"] = pd.to_numeric(df["adminLogins"], errors="coerce").fillna(0).astype(int)
+    else:
+        df["adminLogins"] = 0
 
-    # 5) Keep only stable columns if you prefer (optional). We keep all columns to aid debugging,
-    #    but downstream code should only rely on the validated, stable ones.
-    #    Uncomment the next line to hard-select:
-    # df = df[["userId", "email", "name", "organization", "adminLogins", "status", "createdAt"]]
+    # dcSubscription -> status, plan_name (handles dict or string)
+    def _parse_dc_sub(value):
+        if pd.isna(value):
+            return {"status": "unknown", "dcPlan": {"name": "unknown"}}
+        if isinstance(value, dict):
+            return value
+        try:
+            # old logic: be lenient with quotes
+            cleaned = str(value).replace('""','"').replace('"','').replace("'", '"')
+            return json.loads(cleaned)
+        except Exception:
+            try:
+                return ast.literal_eval(str(value))
+            except Exception:
+                return {"status": "unknown", "dcPlan": {"name": "unknown"}}
 
-    # --- Validate names-only contract and return -------------------------------
-    return validate_dc_columns(df)
+    sub = df.get("dcSubscription")
+    parsed = sub.apply(_parse_dc_sub) if sub is not None else pd.Series([{"status":"unknown","dcPlan":{"name":"unknown"}}]*len(df))
+    df["status"] = parsed.apply(lambda x: x.get("status", "unknown"))
+    df["plan_name"] = parsed.apply(lambda x: x.get("dcPlan", {}).get("name", "unknown"))
+
+    # drop old cruft (same as old cleaner)
+    df = df.drop(columns=["dcSubscription","zohoLeadId","zohoContactId","zohoAccountId","schemaName"], errors="ignore")
+
+    # 5) Normalize to the v3 stable columns (names only; no enrichment)
+    def _pick_col(d: pd.DataFrame, *names: str) -> pd.Series:
+        for n in names:
+            if n in d.columns:
+                return d[n]
+        # length-preserving NA series
+        return pd.Series([pd.NA] * len(d), index=d.index)
+
+    out = pd.DataFrame(index=df.index)
+
+    out["userId"] = _pick_col(df, "userId", "id", "user_id").astype("string")
+    out["email"] = _pick_col(df, "email").astype("string")
+    out["name"] = _pick_col(df, "name", "fullName", "full_name").astype("string")
+    out["organization"] = _pick_col(df, "organization", "domain", "company", "org").astype("string")
+    out["adminLogins"] = pd.to_numeric(_pick_col(df, "adminLogins", "admin_logins"), errors="coerce").astype("Int64")
+    out["status"] = _pick_col(df, "status", "plan_status", "account_status").astype("string")
+
+    # createdAt as tz-naive datetime (keep NaT if unparsable)
+    created_raw = _pick_col(df, "createdAt", "created_at", "createdAtUtc", "created_at_utc", "createdAtISO")
+    out["createdAt"] = pd.to_datetime(created_raw, errors="coerce", utc=True).dt.tz_convert(None)
+
+    # 6) Validate and return
+    return validate_dc_columns(out)
