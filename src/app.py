@@ -1,10 +1,14 @@
-# shim for Streamlit Cloud (nightly)
-# Streamlit Cloud is still trying to launch src/app.py
-# but our real entry point is now top-level app.py.
+import os
+import sys
+import runpy
 
-import os, runpy
+# Absolute path to repo root: /mount/src/lead_scoring_app
+ROOT = os.path.dirname(os.path.dirname(__file__))
 
-ROOT = os.path.dirname(os.path.dirname(__file__))  # /mount/src/lead_scoring_app
+# Ensure repo root is on PYTHONPATH so "ui", "data", "scoring" import correctly
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 MAIN = os.path.join(ROOT, "app.py")
 
 runpy.run_path(MAIN, run_name="__main__")
