@@ -130,8 +130,7 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
     out["status"] = _pick_col(df, "status", "plan_status", "account_status").astype("string")
 
     # createdAt is strictly DD/MM/YYYY in DreamClass
-    out["createdAt"] = pd.to_datetime(_pick_col(df, "createdAt"), format="%d/%m/%Y", errors="coerce"
-    )
+    out["createdAt"] = pd.to_datetime(_pick_col(df, "createdAt"), format="%d/%m/%Y", errors="coerce")
 
 
     # 6) Validate and return
