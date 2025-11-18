@@ -133,12 +133,12 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
     out["adminLogins"] = pd.to_numeric(_pick_col(df, "adminLogins", "admin_logins"), errors="coerce").astype("Int64")
     out["status"] = _pick_col(df, "status", "plan_status", "account_status").astype("string")
 
-    # createdAt is strictly DD/MM/YYYY in DreamClass
-    out["createdAt"] = pd.to_datetime(
-    _pick_col(df, "createdAt", "created_at", "createdAtUtc", "created_at_utc", "createdAtISO"),
-    dayfirst=True,
-    errors="coerce"
+    # DreamClass now returns ISO timestamps in createdAt
+    out["createdAt"] = (
+        pd.to_datetime(_pick_col(df, "createdAt"), errors="coerce", utc=True)
+        .dt.tz_convert(None)
     )
+
 
 
 
