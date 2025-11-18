@@ -120,7 +120,7 @@ def render() -> None:
 
 
     # --- Step 2: Run Scoring ---------------------------------------------------
-     with st.expander(
+    with st.expander(
         "2) Run Scoring Algorithm",
         expanded=st.session_state["wizard_fetched"] and not st.session_state["wizard_scored"],
     ):
