@@ -137,4 +137,4 @@ def fetch_and_clean(start_date: str, end_date: str) -> pd.DataFrame:
         df["sign_up"] = pd.to_numeric(df["sign_up"], errors="coerce").fillna(0).astype(int)
 
     # pass through schema validator
-    return validate_ga_columns(df)
+    return validate_ga_columns(df)    # this becomes GA_raw upstream

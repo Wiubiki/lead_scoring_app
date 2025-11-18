@@ -72,18 +72,12 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
         raw = raw["data"]
 
     df = pd.DataFrame(raw)
-    # import streamlit as st
-    # st.write("RAW DC COLUMNS:", df.columns.tolist())
-    # st.write("RAW createdAt sample:", df.get("createdAt").head(10).tolist())
-    # st.write("RAW createdAtUtc sample:", df.get("createdAtUtc").head(10).tolist())
     if df.empty:
         # return empty but correctly-shaped frame (keeps UI from exploding)
         empty = pd.DataFrame(columns=["userId","email","name","organization","adminLogins","status","createdAt"])
         return validate_dc_columns(empty)
 
     # 4) Clean exactly like the old cleaner
-    # DreamClass also returns timestamps like "27/10/2025
-    # df["createdAt"] = pd.to_datetime(df["createdAt"], format="%d/%m/%Y", errors="coerce")
 
 
     # adminLogins -> int
@@ -144,3 +138,14 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
 
     # 6) Validate and return
     return validate_dc_columns(out)
+
+def filter_by_date(dc_raw: pd.DataFrame, start_date, end_date) -> pd.DataFrame:
+    """Return DreamClass rows inside selected date range."""
+    if "createdAt" not in dc_raw.columns:
+        raise RuntimeError("[DC_norm] Missing 'createdAt' before filtering.")
+
+    mask = (
+        (dc_raw["createdAt"].dt.date >= start_date) &
+        (dc_raw["createdAt"].dt.date <= end_date)
+    )
+    return dc_raw.loc[mask].reset_index(drop=True)

@@ -9,7 +9,7 @@ import datetime as dt
 import streamlit as st
 import pandas as pd
 
-from data.dreamclass_handler import fetch_and_clean as fetch_dc
+from data.dreamclass_handler import fetch_and_clean as fetch_dc, filter_by_date
 from data.ga_handler import fetch_and_clean as fetch_ga
 from scoring.lead_scores_calculator import apply_lead_scoring as apply_scoring
 
@@ -78,34 +78,56 @@ def render() -> None:
             try:
                 progress = st.progress(0, text="Starting…")
 
+                # --- Fetch DreamClass (raw) ---
                 with st.spinner("Fetching DreamClass…"):
-                    DC_norm = _get_dc_cached()
-                    st.session_state["DC_norm"] = DC_norm
+                    DC_raw = fetch_dc()   # handler returns DC_raw
+                    st.session_state["DC_raw"] = DC_raw
                 progress.progress(50, text="DreamClass ✓")
 
+                # --- Fetch GA (raw; already date-scoped) ---
                 with st.spinner("Fetching GA…"):
                     start_s = start_dt.strftime("%Y-%m-%d")
                     end_s = end_dt.strftime("%Y-%m-%d")
-                    GA_norm = _get_ga_cached(start_s, end_s)
-                    st.session_state["GA_norm"] = GA_norm
-                progress.progress(100, text="DreamClass ✓  •  GA ✓")
+                    GA_raw = fetch_ga(start_s, end_s)
+                    st.session_state["GA_raw"] = GA_raw
+                progress.progress(80, text="GA ✓")
 
-                st.success("Fetched data from DreamClass & GA.")
+                # --- Apply date-range filtering only to DC ---
+                from data.dreamclass_handler import filter_by_date
+                DC_range = filter_by_date(DC_raw, start_dt, end_dt)
+                GA_range = GA_raw  # GA is already date-filtered by API
+
+                st.session_state["DC_range"] = DC_range
+                st.session_state["GA_range"] = GA_range
+
+                progress.progress(100, text="DreamClass ✓ • GA ✓ • Range applied")
+
+                st.success("Fetched & prepared data.")
+
                 st.session_state["wizard_fetched"] = True
 
                 if show_samples:
-                    st.subheader("DreamClass (sample)")
-                    st.dataframe(DC_norm.head(20), use_container_width=True)
+                    st.subheader("DreamClass (sample, date-range)")
+                    st.dataframe(DC_range.head(20), use_container_width=True)
+
                     st.subheader("GA (sample)")
-                    st.dataframe(GA_norm.head(20), use_container_width=True)
+                    st.dataframe(GA_range.head(20), use_container_width=True)
 
             except Exception as e:
                 st.session_state["wizard_fetched"] = False
                 st.error(str(e))
 
 
+
     # --- Step 2: Run Scoring ---------------------------------------------------
-    with st.expander(
+     with st.expander(
+        "2) Run Scoring Algorithm",
+        expanded=st.session_state["wizard_fetched"] and not st.session_state["wizard_scored"],
+    ):
+        disabled = not st.session_state["wizard_fetched"]
+        score_clicked = st.button("Run Scoring", type="primary", disabled=disabled)
+
+            with st.expander(
         "2) Run Scoring Algorithm",
         expanded=st.session_state["wizard_fetched"] and not st.session_state["wizard_scored"],
     ):
@@ -113,29 +135,20 @@ def render() -> None:
         score_clicked = st.button("Run Scoring", type="primary", disabled=disabled)
 
         if score_clicked:
-            DC_norm = st.session_state.get("DC_norm")
-            GA_norm = st.session_state.get("GA_norm")
+            DC_range = st.session_state.get("DC_range")
+            GA_range = st.session_state.get("GA_range")
 
-            if DC_norm is None or GA_norm is None:
-                st.error("Fetch data first (Step 1).")
-            elif "createdAt" not in DC_norm.columns:
-                st.error("DC_norm missing 'createdAt'.")
+            if DC_range is None or GA_range is None:
+                st.error("Fetch data first in Step 1 (no DC_range / GA_range in session).")
             else:
-                start_dt, end_dt = st.session_state.get("_date_range", (None, None))
-                if not start_dt or not end_dt:
-                    st.error("Please select a valid date range in Step 1.")
-                else:
-                    with st.spinner("Filtering DreamClass by createdAt and applying scoring…"):
-                        mask = (
-                            (DC_norm["createdAt"].dt.date >= start_dt)
-                            & (DC_norm["createdAt"].dt.date <= end_dt)
-                        )
-                        DC_filtered = DC_norm.loc[mask].reset_index(drop=True)
-                        scored_df = apply_scoring(DC_filtered, GA_norm)
+                with st.spinner("Running scoring…"):
+                    scored_df = apply_scoring(DC_range, GA_range)
 
-                    st.session_state["scored_df"] = scored_df
-                    st.session_state["wizard_scored"] = True
-                    st.success(f"Scored {len(scored_df)} records.")
+                st.session_state["scored_df"] = scored_df
+                st.session_state["wizard_scored"] = True
+                st.success(f"Scored {len(scored_df)} records.")
+
+
 
     # --- Step 3: Results (preview) --------------------------------------------
     with st.expander("3) Results (preview)", expanded=st.session_state["wizard_scored"]):
