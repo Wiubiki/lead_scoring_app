@@ -78,8 +78,10 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
         return validate_dc_columns(empty)
 
     # 4) Clean exactly like the old cleaner
-    # createdAt -> yyyy-mm-dd (tz-naive ok)
-    df["createdAt"] = pd.to_datetime(df.get("createdAt"), errors="coerce").dt.tz_localize(None).dt.strftime("%Y-%m-%d")
+    # DreamClass also returns timestamps like "27/10/2025
+    df["createdAt"] = pd.to_datetime(df["createdAt"], format="%d/%m/%Y", errors="coerce"
+)
+
 
     # adminLogins -> int
     if "adminLogins" in df.columns:
