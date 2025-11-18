@@ -79,7 +79,7 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
 
     # 4) Clean exactly like the old cleaner
     # DreamClass also returns timestamps like "27/10/2025
-    df["createdAt"] = pd.to_datetime(df["createdAt"], format="%d/%m/%Y", errors="coerce")
+    # df["createdAt"] = pd.to_datetime(df["createdAt"], format="%d/%m/%Y", errors="coerce")
 
 
     # adminLogins -> int
