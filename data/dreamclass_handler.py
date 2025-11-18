@@ -79,8 +79,7 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
 
     # 4) Clean exactly like the old cleaner
     # DreamClass also returns timestamps like "27/10/2025
-    df["createdAt"] = pd.to_datetime(df["createdAt"], format="%d/%m/%Y", errors="coerce"
-)
+    df["createdAt"] = pd.to_datetime(df["createdAt"], format="%d/%m/%Y", errors="coerce")
 
 
     # adminLogins -> int
@@ -130,9 +129,10 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
     out["adminLogins"] = pd.to_numeric(_pick_col(df, "adminLogins", "admin_logins"), errors="coerce").astype("Int64")
     out["status"] = _pick_col(df, "status", "plan_status", "account_status").astype("string")
 
-    # createdAt as tz-naive datetime (keep NaT if unparsable)
-    created_raw = _pick_col(df, "createdAt", "created_at", "createdAtUtc", "created_at_utc", "createdAtISO")
-    out["createdAt"] = pd.to_datetime(created_raw, errors="coerce", utc=True).dt.tz_convert(None)
+    # createdAt is strictly DD/MM/YYYY in DreamClass
+    out["createdAt"] = pd.to_datetime(_pick_col(df, "createdAt"), format="%d/%m/%Y", errors="coerce"
+    )
+
 
     # 6) Validate and return
     return validate_dc_columns(out)
