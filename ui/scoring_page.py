@@ -11,7 +11,7 @@ import pandas as pd
 
 from data.dreamclass_handler import fetch_and_clean as fetch_dc
 from data.ga_handler import fetch_and_clean as fetch_ga
-from scoring.lead_scores_calculator import apply as apply_scoring
+from scoring.lead_scores_calculator import apply_lead_scoring as apply_scoring
 
 # ---------- cached fetchers ----------
 
