@@ -112,13 +112,13 @@ def fetch_and_clean(start_date: str, end_date: str) -> pd.DataFrame:
 
     # Normalize names
     renames = {
-        "firstUserCampaignName": "first_campaign",
-        "firstUserGoogleAdsAdGroupName": "first_ads_adgroup",
-        "firstUserSourceMedium": "first_source_medium",
-        "customUser:icpGroup": "icp_group",
-        "customUser:schoolType": "schoolType",
-        "customUser:userId": "userId",
-        "keyEvents:sign_up": "sign_up",
+    "firstUserCampaignName": "First user campaign",
+    "firstUserSourceMedium": "First user source / medium",
+    "firstUserGoogleAdsAdGroupName": "Google Ads Ad Group",
+    "customUser:icpGroup": "icp_group",
+    "customUser:schoolType": "school_type",
+    "customUser:userId": "userId",
+    "keyEvents:sign_up": "sign_up",
     }
 
     df = df.rename(columns=renames)
