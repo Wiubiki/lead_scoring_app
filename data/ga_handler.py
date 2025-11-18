@@ -123,6 +123,10 @@ def fetch_and_clean(start_date: str, end_date: str) -> pd.DataFrame:
 
     df = df.rename(columns=renames)
 
+    # ensure lowercase for consistency, like main app does manually
+    if "First user source / medium" in df.columns:
+        df["First user source / medium"] = df["First user source / medium"].str.lower()
+
     # ensure correct dtypes
     if "userId" in df.columns:
         df["userId"] = df["userId"].astype(str).str.strip()
