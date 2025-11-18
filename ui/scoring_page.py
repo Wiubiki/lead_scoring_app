@@ -15,12 +15,10 @@ from scoring.lead_scores_calculator import apply_lead_scoring as apply_scoring
 
 # ---------- cached fetchers ----------
 
-@st.cache_data(show_spinner=False)
 def _get_dc_cached() -> pd.DataFrame:
     base_url = st.secrets.get("dreamclass", {}).get("BASE_URL", "")
     return fetch_dc(base_url=base_url)  # statuses hardcoded in handler
 
-@st.cache_data(show_spinner=False)
 def _get_ga_cached(start_date: str, end_date: str) -> pd.DataFrame:
     return fetch_ga(start_date=start_date, end_date=end_date)
 
