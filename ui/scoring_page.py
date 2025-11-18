@@ -127,12 +127,6 @@ def render() -> None:
         disabled = not st.session_state["wizard_fetched"]
         score_clicked = st.button("Run Scoring", type="primary", disabled=disabled)
 
-            with st.expander(
-        "2) Run Scoring Algorithm",
-        expanded=st.session_state["wizard_fetched"] and not st.session_state["wizard_scored"],
-    ):
-        disabled = not st.session_state["wizard_fetched"]
-        score_clicked = st.button("Run Scoring", type="primary", disabled=disabled)
 
         if score_clicked:
             DC_range = st.session_state.get("DC_range")
