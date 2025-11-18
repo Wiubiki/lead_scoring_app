@@ -7,13 +7,13 @@ import pandas as pd
 
 # --- Expected, stable columns after cleaning/normalization ---
 # --- GA schema (core + optional) ---
-GA_REQUIRED: Set[str] = {
+GA_REQUIRED = {
     "userId",
     "country",
     "icp_group",
-    "first_source_medium",
-    "first_campaign",
-    "first_ads_adgroup",
+    "First user source / medium",
+    "First user campaign",
+    "Google Ads Ad Group",
 }
 
 GA_OPTIONAL: Set[str] = {
