@@ -176,10 +176,10 @@ def render() -> None:
 
     # --- Step 3: Results (preview) --------------------------------------------
     with st.expander("DreamClass (sample, date-range)", expanded=False):
-    st.dataframe(st.session_state["DC_raw"].head(20), use_container_width=True)
+        st.dataframe(st.session_state["DC_raw"].head(20), use_container_width=True)
 
     with st.expander("GA (sample)", expanded=False):
-    st.dataframe(st.session_state["GA_raw"].head(20), use_container_width=True)
+        st.dataframe(st.session_state["GA_raw"].head(20), use_container_width=True)
 
         if isinstance(df, pd.DataFrame) and not df.empty:
             st.dataframe(df.head(30), use_container_width=True)
