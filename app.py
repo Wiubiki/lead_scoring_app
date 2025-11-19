@@ -8,33 +8,61 @@ from auth_library import authenticate
 st.set_page_config(page_title="Lead Scoring App", layout="wide")
 
 # --- AUTH WRAPPER -------------------------------------------------------------
+import streamlit as st
+from auth_library import authenticate
+
 def require_auth():
-    """Render login UI and block app until auth succeeds."""
+    """Render login UI and block app until authentication succeeds."""
     if st.session_state.get("auth_ok"):
         return True
 
-    st.title("Login")
+    # Center layout
+    st.markdown(
+        """
+        <style>
+            .centered {
+                max-width: 400px;
+                margin: auto;
+                margin-top: 12vh;
+                padding: 2rem;
+                border-radius: 12px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    with st.form("login_form"):
-        u = st.text_input("Username")
-        p = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Sign In")
+    # Outer container
+    with st.container():
+        st.markdown('<div class="centered">', unsafe_allow_html=True)
 
-    if submitted:
-        try:
-            authed = authenticate(u, p)
-        except Exception as e:
-            st.error(f"Auth error: {e}")
-            st.stop()
+        st.markdown("## Login")
 
-        if authed:
-            st.session_state["auth_ok"] = True
-            st.experimental_rerun()
-        else:
-            st.error("Invalid credentials.")
-            st.stop()
+        with st.form("login_form", clear_on_submit=False):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Sign In")
+
+        if submitted:
+            try:
+                authed = authenticate(username, password)
+            except Exception as e:
+                st.error(f"Authentication error: {e}")
+                st.stop()
+
+            if authed:
+                st.session_state["auth_ok"] = True
+                st.rerun()
+            else:
+                st.error("Invalid credentials.")
+                st.stop()
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.stop()
+
 
 # --- MAIN ROUTER --------------------------------------------------------------
 
