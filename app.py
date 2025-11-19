@@ -1,53 +1,47 @@
 # app.py
-# v3 modular router-only Streamlit app
-# - Navigation: Scoring / Results / Reports
-# - Optional login via auth_library.authenticate (kept at project root)
-# - All logic lives in data/*, scoring/*, ui/*
-
 import streamlit as st
-
-# Optional auth (kept from old app; safe to remove if not needed)
-try:
-    from auth_library import authenticate  # root-level per your note
-except Exception:
-    authenticate = None  # proceed without auth if module missing
-
 from ui.scoring_page import render as render_scoring
 from ui.results_page import render as render_results
 from ui.reports_page import render as render_reports
 
 st.set_page_config(page_title="Lead Scoring App", layout="wide")
 
-# ---- Optional login gate -----------------------------------------------------
-if authenticate:
-    if "authed" not in st.session_state:
-        st.session_state.authed = False
+# --- AUTH WRAPPER -------------------------------------------------------------
 
-    if not st.session_state.authed:
-        st.sidebar.subheader("Login")
-        user = st.sidebar.text_input("Username")
-        pwd = st.sidebar.text_input("Password", type="password")
-        if st.sidebar.button("Sign in"):
-            if authenticate(user, pwd):
-                st.session_state.authed = True
-                st.sidebar.success("Signed in.")
-            else:
-                st.sidebar.error("Invalid credentials.")
+def require_auth():
+    """Stops rendering until user is authenticated."""
+    try:
+        from auth_library import authenticate
+    except Exception:
+        return True  # fail-open for local dev
+
+    auth = authenticate()
+    if not auth:
         st.stop()
+    return True
 
-# ---- Router ------------------------------------------------------------------
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Scoring", "Results", "Reports"])
 
-# allow programmatic navigation from pages (e.g., scoring_page sets st.session_state["nav"])
-nav_override = st.session_state.get("nav")
-if nav_override and nav_override in ["Scoring", "Results", "Reports"]:
-    page = nav_override
-    st.session_state["nav"] = None  # clear after one use
+# --- MAIN ROUTER --------------------------------------------------------------
 
-if page == "Scoring":
-    render_scoring()
-elif page == "Results":
-    render_results()
-else:  # "Reports"
-    render_reports()
+def main():
+    # AUTH FIRST — stops here until login is complete
+    require_auth()
+
+    if "nav" not in st.session_state:
+        st.session_state["nav"] = "Scoring"
+
+    with st.sidebar:
+        st.title("Navigation")
+        page = st.radio("Go to", ["Scoring", "Results", "Reports"], index=["Scoring", "Results", "Reports"].index(st.session_state["nav"]))
+        st.session_state["nav"] = page
+
+    if page == "Scoring":
+        render_scoring()
+    elif page == "Results":
+        render_results()
+    else:
+        render_reports()
+
+
+if __name__ == "__main__":
+    main()
