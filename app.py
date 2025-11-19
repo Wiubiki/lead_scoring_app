@@ -69,7 +69,7 @@ def main():
 
 
 
-    if nav == "Data Retrieval & Scoring":
+    if nav == "Scoring":
         render_scoring()
     elif nav == "Results":
         render_results()
