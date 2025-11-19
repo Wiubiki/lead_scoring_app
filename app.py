@@ -39,20 +39,17 @@ def require_auth():
 # --- MAIN ROUTER --------------------------------------------------------------
 
 def main():
-    # AUTH FIRST — stops here until login is complete
     require_auth()
 
     if "nav" not in st.session_state:
         st.session_state["nav"] = "Scoring"
 
-    with st.sidebar:
-        st.title("Navigation")
-        page = st.radio("Go to", ["Scoring", "Results", "Reports"], index=["Scoring", "Results", "Reports"].index(st.session_state["nav"]))
-        st.session_state["nav"] = page
+    nav = st.sidebar.radio("Go to", ["Scoring", "Results", "Reports"])
+    st.session_state["nav"] = nav
 
-    if page == "Scoring":
+    if nav == "Scoring":
         render_scoring()
-    elif page == "Results":
+    elif nav == "Results":
         render_results()
     else:
         render_reports()
@@ -60,3 +57,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
