@@ -9,61 +9,42 @@ st.set_page_config(page_title="Lead Scoring App", layout="wide")
 
 # --- AUTH WRAPPER -------------------------------------------------------------
 
-
 def require_auth():
     """Render login UI and block app until authentication succeeds."""
+    # Already logged in -> let the app continue
     if st.session_state.get("auth_ok"):
         return True
 
-    # Inject proper centering + width constraints
-    st.markdown(
-        """
-        <style>
-            .login-wrapper {
-                max-width: 420px !important;
-                margin: 10vh auto !important;
-                padding: 2rem;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-            }
-            .block-container {
-                padding-top: 0 !important;
-            }
-            input, button, .stTextInput, .stPassword {
-                max-width: 100% !important;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Small vertical spacer so it's not glued to the top
+    st.markdown("<div style='height: 12vh'></div>", unsafe_allow_html=True)
 
-    # The wrapper prevents Streamlit from expanding horizontally
-    st.markdown('<div class="login-wrapper">', unsafe_allow_html=True)
+    # Centered layout: empty | login | empty
+    left, center, right = st.columns([2, 1, 2])
 
-    st.markdown("## Login")
+    with center:
+        st.markdown("## Login")
 
-    with st.form("login_form", clear_on_submit=False):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Sign In")
+        with st.form("login_form", clear_on_submit=False):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Sign In")
 
-    if submitted:
-        try:
-            authed = authenticate(username, password)
-        except Exception as e:
-            st.error(f"Authentication error: {e}")
-            st.stop()
+        if submitted:
+            try:
+                authed = authenticate(username, password)
+            except Exception as e:
+                st.error(f"Authentication error: {e}")
+                st.stop()
 
-        if authed:
-            st.session_state["auth_ok"] = True
-            st.rerun()
-        else:
-            st.error("Invalid credentials.")
-            st.stop()
+            if authed:
+                st.session_state["auth_ok"] = True
+                st.experimental_rerun()
+            else:
+                st.error("Invalid credentials.")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    # If we’re here, user is not authenticated yet -> stop app after showing login
     st.stop()
+
 
 
 # --- MAIN ROUTER --------------------------------------------------------------
