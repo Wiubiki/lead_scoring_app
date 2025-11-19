@@ -19,7 +19,7 @@ def require_auth():
     st.markdown("<div style='height: 12vh'></div>", unsafe_allow_html=True)
 
     # Centered layout: empty | login | empty
-    left, center, right = st.columns([2, 1, 2])
+    left, center, right = st.columns([1, 1, 1])
 
     with center:
         st.markdown("## Login")
