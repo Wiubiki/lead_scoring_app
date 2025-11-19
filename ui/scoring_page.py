@@ -153,10 +153,7 @@ def render() -> None:
             go = st.button("Open full Results page →", type="secondary")
             if go:
                 st.session_state["nav"] = "Results"
-                try:
-                    import streamlit as _st
-                    _st.experimental_rerun()
-                except Exception:
-                    st.info("Use the sidebar to open **Results**.")
+                st.rerun()
+
         else:
             st.caption("No scored data yet. Complete Steps 1 and 2.")
