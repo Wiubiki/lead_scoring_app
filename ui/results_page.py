@@ -1,94 +1,127 @@
 # ui/results_page.py
-# Purpose: Results page (formerly "View Results")
-# - Show scored table (with a simple Class filter)
-# - Pie chart of Class distribution
-# - CSV / Parquet downloads
-# - Save Snapshot (delegates to existing implementation)
-#
-# Notes:
-# - Expects a scored dataframe (with 'Class' and 'Class%') either passed as `df`
-#   or present in st.session_state["scored_df"].
-# - No data renaming/cleaning here.
+# v3 Results page
+# - Consumes scored_df from session_state (produced in Scoring step)
+# - Shows full table
+# - Computes Class counts/percentages on the fly from `lead_class`
+# - Renders a pie chart of lead-class distribution
 
-from __future__ import annotations
-
-import io
 import streamlit as st
 import pandas as pd
 
-def _save_snapshot(df: pd.DataFrame) -> None:
-    """
-    Delegate to your existing snapshot saver.
-    Adjust the import to match your repo if needed.
-    """
-    tried = []
-    for modpath, fn in [
-        ("features.snapshots", "save_snapshot"),
-        ("snapshots", "save_snapshot"),
-        ("ui.snapshots", "save_snapshot"),
-    ]:
-        try:
-            mod = __import__(modpath, fromlist=[fn])
-            getattr(mod, fn)(df)
-            return
-        except Exception as e:
-            tried.append(f"{modpath}.{fn}: {e}")
-    raise RuntimeError("Save Snapshot implementation not found.\n" + "\n".join(tried))
+try:
+    import altair as alt
+except Exception:  # very defensive; page will still work without chart
+    alt = None
 
-def render(df: pd.DataFrame | None = None) -> None:
+
+def _get_scored_df() -> pd.DataFrame | None:
+    df = st.session_state.get("scored_df")
+    if isinstance(df, pd.DataFrame) and not df.empty:
+        return df
+    return None
+
+
+def _build_class_summary(df: pd.DataFrame) -> pd.DataFrame | None:
+    """
+    Take the scored dataframe and aggregate by lead class.
+
+    We expect either:
+      - a 'lead_class' column (preferred), or
+      - a 'Class' column (fallback – older runs)
+    """
+    key_col = None
+    if "lead_class" in df.columns:
+        key_col = "lead_class"
+    elif "Class" in df.columns:
+        key_col = "Class"
+
+    if not key_col:
+        return None
+
+    counts = df[key_col].value_counts().sort_index()
+    total = int(counts.sum())
+
+    summary = pd.DataFrame(
+        {
+            "Class": counts.index.astype(str),
+            "count": counts.values,
+        }
+    )
+    summary["Class%"] = (summary["count"] / total * 100).round(2)
+    summary["Total"] = total  # handy for labeling
+
+    return summary
+
+
+def render() -> None:
     st.title("Results")
 
-    # Source the dataframe
-    if df is None:
-        df = st.session_state.get("scored_df")
-
-    if df is None or df.empty:
-        st.info("No scored results available. Run scoring first.")
+    scored_df = _get_scored_df()
+    if scored_df is None:
+        st.warning("No scored data available. Go to **Scoring** and run the scoring step first.")
         return
 
-    # Basic sanity: ensure expected columns exist (names-only check)
-    missing = [c for c in ["Class", "Class%"] if c not in df.columns]
-    if missing:
-        st.warning(f"Scored data missing expected column(s): {missing}. "
-                   "Page will render without charts relying on them.")
-
-    # Filters (kept minimal to mirror old behavior)
+    # --- Filters (simple, non-destructive) ------------------------------------
     with st.expander("Filters", expanded=False):
-        class_opts = sorted([c for c in df.get("Class", pd.Series(dtype=str)).dropna().unique().tolist()])
-        chosen = st.multiselect("Class", class_opts, default=None)
+        # Filter by lead_class if present
+        class_col = "lead_class" if "lead_class" in scored_df.columns else None
+        if class_col:
+            classes = sorted(scored_df[class_col].dropna().unique().tolist())
+            selected = st.multiselect("Lead Class", options=classes, default=classes)
+            if selected:
+                scored_view = scored_df[scored_df[class_col].isin(selected)].copy()
+            else:
+                scored_view = scored_df.copy()
+        else:
+            st.caption("No `lead_class` column found – showing all rows.")
+            scored_view = scored_df.copy()
 
-    tmp = df.copy()
-    if chosen:
-        tmp = tmp[tmp["Class"].isin(chosen)]
+    # --- Main scored table ----------------------------------------------------
+    st.dataframe(scored_view, use_container_width=True)
 
-    # Table
-    st.dataframe(tmp, use_container_width=True)
+    # --- Class distribution summary + chart -----------------------------------
+    summary = _build_class_summary(scored_view)
 
-    # Pie chart: Class distribution (optional)
-    try:
-        shares = tmp["Class"].value_counts(normalize=True).sort_index()
-        if not shares.empty:
-            fig = shares.plot.pie(autopct="%1.1f%%", ylabel="").figure
-            st.pyplot(fig, clear_figure=True)
-    except Exception:
-        st.caption("Pie chart unavailable (requires a 'Class' column and plotting backend).")
+    if summary is None:
+        st.info("Scored data has no 'lead_class'/'Class' column, so lead-class distribution "
+                "cannot be computed.")
+        return
 
-    # Downloads
-    csv_bytes = tmp.to_csv(index=False).encode("utf-8")
-    st.download_button("Download CSV", data=csv_bytes, file_name="scored_results.csv", mime="text/csv")
+    total = int(summary["Total"].iloc[0])
 
-    try:
-        buf = io.BytesIO()
-        tmp.to_parquet(buf, index=False)  # requires pyarrow or fastparquet
-        st.download_button("Download Parquet", data=buf.getvalue(),
-                           file_name="scored_results.parquet", mime="application/octet-stream")
-    except Exception:
-        st.caption("Parquet export requires `pyarrow` or `fastparquet`.")
+    st.subheader("Lead Class Distribution")
 
-    # Save Snapshot (unchanged behavior)
-    if st.button("Save Snapshot"):
-        try:
-            _save_snapshot(tmp)
-            st.success("Snapshot saved.")
-        except Exception as e:
-            st.error(str(e))
+    col_table, col_chart = st.columns([1, 2])
+
+    with col_table:
+        # show compact summary table
+        display_cols = ["Class", "count", "Class%"]
+        st.dataframe(summary[display_cols], use_container_width=True)
+
+    with col_chart:
+        if alt is None:
+            st.caption("Altair not available – skipping pie chart.")
+        else:
+            chart = (
+                alt.Chart(summary)
+                .mark_arc()
+                .encode(
+                    theta="count:Q",
+                    color="Class:N",
+                    tooltip=["Class", "count", "Class%"],
+                )
+                .properties(
+                    title=f"Lead Class Distribution (Total Leads: {total})"
+                )
+            )
+            st.altair_chart(chart, use_container_width=True)
+
+    # --- Download scored data -------------------------------------------------
+    st.markdown("### Export")
+    csv = scored_view.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="Download scored data as CSV",
+        data=csv,
+        file_name="scored_leads.csv",
+        mime="text/csv",
+    )

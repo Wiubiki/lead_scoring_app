@@ -1,31 +1,26 @@
 # ui/reports_page.py
-# Purpose: Reports page (formerly "Summary Reports")
-# - Historical KPIs + XmR with WE/Nelson rules
-# - Zero logic here; purely delegates to existing implementation
+# v3 placeholder:
+#   - Old summary/XmR reporting pipeline is not wired into nightly yet.
+#   - This page deliberately does NOT import legacy `reports.*` modules.
 
-from __future__ import annotations
 import streamlit as st
+
 
 def render() -> None:
     st.title("Reports")
 
-    tried = []
-    # Try common locations; adjust once you know the exact module
-    candidates = [
-        ("reports.summary", "render"),
-        ("reports.summary_reports", "render"),
-        ("reports.xmr", "render"),
-        ("ui.summary_reports", "render"),
-        ("features.reports", "render"),
-    ]
-    for modpath, fn in candidates:
-        try:
-            mod = __import__(modpath, fromlist=[fn])
-            getattr(mod, fn)()
-            return
-        except Exception as e:
-            tried.append(f"{modpath}.{fn}: {e}")
+    st.warning(
+        "Summary / XmR reports are not yet implemented in the v3 nightly app.\n\n"
+        "For now, use the production Lead Scoring app to view historical summary reports. "
+        "This page will eventually:\n"
+        "- Load saved scored runs (merged_data_leads) from Supabase\n"
+        "- Let you pick one or more past scoring windows\n"
+        "- Show class-distribution pie charts and XmR charts by Class%\n"
+        "- Provide advanced breakdowns by `First user source / medium` and campaign."
+    )
 
-    st.error("Reports renderer not found. Verify the module path for your existing Summary Reports.")
-    with st.expander("Details"):
-        st.code("\n".join(tried))
+    st.caption(
+        "The current nightly build focuses on getting data fetching, normalization, "
+        "and scoring rock-solid. Reporting will be re-attached once we have "
+        "Supabase storage for scored snapshots."
+    )
