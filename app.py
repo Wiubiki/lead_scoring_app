@@ -38,7 +38,7 @@ def require_auth():
 
             if authed:
                 st.session_state["auth_ok"] = True
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("Invalid credentials.")
 
