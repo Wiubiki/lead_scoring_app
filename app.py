@@ -55,10 +55,18 @@ def main():
     if "nav" not in st.session_state:
         st.session_state["nav"] = "Scoring"
 
-    nav = st.sidebar.radio("Go to", ["Scoring", "Results", "Reports"])
+    nav_options = ["Scoring", "Results", "Reports"]
+
+    nav = st.sidebar.radio(
+        "Navigation",
+        nav_options,
+        index=nav_options.index(st.session_state["nav"])
+    )
+
     st.session_state["nav"] = nav
 
-    if nav == "Scoring":
+
+    if nav == "Data Retrieval & Scoring":
         render_scoring()
     elif nav == "Results":
         render_results()

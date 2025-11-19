@@ -31,22 +31,47 @@ def _clear_scored():
 def _set_date_range(start: dt.date, end: dt.date):
     st.session_state["_date_range"] = (start, end)
 
+def render_stepper(current_step):
+    steps = ["Fetch Data", "Run Scoring", "Results"]
+    icons = []
+
+    for i, step in enumerate(steps):
+        if i < current_step:
+            icons.append(f"🟩 **{step}** ✓")
+        elif i == current_step:
+            icons.append(f"🟦 **{step}**")
+        else:
+            icons.append(f"⬜ {step}")
+
+    st.markdown(
+        f"""
+        <div style="display:flex; gap:40px; font-size:18px; margin-bottom:20px;">
+            <div>{icons[0]}</div>
+            <div>{icons[1]}</div>
+            <div>{icons[2]}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render() -> None:
-    st.title("Scoring")
+    st.title("Data Retrieval & Scoring")
+
+    # ---- Workflow Stepper (Option C layout) ----
+    if not st.session_state.get("wizard_fetched"):
+        render_stepper(0)
+    elif not st.session_state.get("wizard_scored"):
+        render_stepper(1)
+    else:
+        render_stepper(2)
+
 
     # Stable step flags (don’t auto-derive each rerun)
     st.session_state.setdefault("wizard_fetched", False)
     st.session_state.setdefault("wizard_scored", False)
 
-    # --- Step state (based on session) ---
-    # fetched = ("DC_norm" in st.session_state) and ("GA_norm" in st.session_state)
-    # scored = (
-    #    ("scored_df" in st.session_state)
-    #    and isinstance(st.session_state["scored_df"], pd.DataFrame)
-    #    and not st.session_state["scored_df"].empty
-    #)
-    #st.session_state.setdefault("wizard_fetched", fetched)
-    #st.session_state.setdefault("wizard_scored", scored)
+
 
     # --- Step 1: Retrieve Data -------------------------------------------------
     with st.expander("1) Retrieve Data", expanded=not st.session_state["wizard_fetched"]):
@@ -127,33 +152,43 @@ def render() -> None:
         disabled = not st.session_state["wizard_fetched"]
         score_clicked = st.button("Run Scoring", type="primary", disabled=disabled)
 
-
         if score_clicked:
-            DC_range = st.session_state.get("DC_range")
-            GA_range = st.session_state.get("GA_range")
+            DC_raw = st.session_state.get("DC_raw")
+            GA_raw = st.session_state.get("GA_raw")
 
-            if DC_range is None or GA_range is None:
-                st.error("Fetch data first in Step 1 (no DC_range / GA_range in session).")
+            if DC_raw is None or GA_raw is None:
+                st.error("Fetch data first (Step 1).")
+            elif "createdAt" not in DC_raw.columns:
+                st.error("DC_raw missing 'createdAt'.")
             else:
-                with st.spinner("Running scoring…"):
-                    scored_df = apply_scoring(DC_range, GA_range)
+                start_dt, end_dt = st.session_state.get("_date_range", (None, None))
+                if not start_dt or not end_dt:
+                    st.error("Please select a valid date range in Step 1.")
+                else:
+                    with st.spinner("Applying scoring…"):
+                        scored_df = apply_scoring(DC_raw, GA_raw)
 
-                st.session_state["scored_df"] = scored_df
-                st.session_state["wizard_scored"] = True
-                st.success(f"Scored {len(scored_df)} records.")
+                    st.session_state["scored_df"] = scored_df
+                    st.session_state["wizard_scored"] = True
+                    st.success(f"Scored {len(scored_df)} records.")
 
 
 
     # --- Step 3: Results (preview) --------------------------------------------
-    with st.expander("3) Results (preview)", expanded=st.session_state["wizard_scored"]):
-        df = st.session_state.get("scored_df")
+    with st.expander("DreamClass (sample, date-range)", expanded=False):
+    st.dataframe(st.session_state["DC_raw"].head(20), use_container_width=True)
+
+    with st.expander("GA (sample)", expanded=False):
+    st.dataframe(st.session_state["GA_raw"].head(20), use_container_width=True)
+
         if isinstance(df, pd.DataFrame) and not df.empty:
             st.dataframe(df.head(30), use_container_width=True)
 
-            go = st.button("Open full Results page →", type="secondary")
+            go = st.button("Open full Results page →")
             if go:
                 st.session_state["nav"] = "Results"
                 st.rerun()
+
 
         else:
             st.caption("No scored data yet. Complete Steps 1 and 2.")
