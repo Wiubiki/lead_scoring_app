@@ -38,6 +38,7 @@ def require_auth():
 
             if authed:
                 st.session_state["auth_ok"] = True
+                st.session_state["nav"] = "Scoring" 
                 st.rerun()
             else:
                 st.error("Invalid credentials.")
