@@ -57,13 +57,15 @@ def main():
 
     nav_options = ["Scoring", "Results", "Reports"]
 
+    nav_options = ["Scoring", "Results", "Reports"]
+    current = st.session_state.get("nav", "Scoring")
     nav = st.sidebar.radio(
         "Navigation",
         nav_options,
-        index=nav_options.index(st.session_state["nav"])
+        index=nav_options.index(current),
     )
-
     st.session_state["nav"] = nav
+
 
 
     if nav == "Data Retrieval & Scoring":
