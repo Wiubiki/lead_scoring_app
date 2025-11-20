@@ -61,33 +61,36 @@ def render():
     with colB:
         st.markdown("### Distribution Pie Chart")
 
-        fig, ax = plt.subplots(figsize=(6, 6))
+        fig, ax = plt.subplots(figsize=(4.5, 4.5))  # limit size
 
         # Correct label format
         class_labels = [f"Class {c}" for c in dist["Class"]]
         pct_labels = [f"{p}%" for p in dist["Class%"]]
         count_labels = [f"({c})" for c in dist["count"]]
 
+        # Draw pie clockwise starting from Class 1 at 12 o'clock
         wedges, _ = ax.pie(
             dist["count"],
             startangle=90,
+            counterclock=False,              # << clockwise!
             wedgeprops={"linewidth": 1, "edgecolor": "white"},
         )
 
-        # Apply external class labels + internal % (count)
+        # External + internal labels
         for w, class_label, pct, count in zip(wedges, class_labels, pct_labels, count_labels):
             ang = (w.theta2 - w.theta1) / 2 + w.theta1
-            x = 1.2 * np.cos(np.deg2rad(ang))
-            y = 1.2 * np.sin(np.deg2rad(ang))
+            x = 1.15 * np.cos(np.deg2rad(ang))
+            y = 1.15 * np.sin(np.deg2rad(ang))
             ax.text(x, y, class_label, ha="center", va="center", fontsize=11)
 
-            # internal label
             x2 = 0.7 * np.cos(np.deg2rad(ang))
             y2 = 0.7 * np.sin(np.deg2rad(ang))
             ax.text(x2, y2, f"{pct}\n{count}", ha="center", va="center", fontsize=10)
 
         ax.axis("equal")
-        st.pyplot(fig)
+
+        st.pyplot(fig, use_container_width=False)  # don't let Streamlit blow it up
+
 
     st.markdown("---")
 
