@@ -81,7 +81,7 @@ def render():
             unsafe_allow_html=True,
         )
 
-        fig, ax = plt.subplots(figsize=(4, 4))  # smaller, prevents overflow
+        fig, ax = plt.subplots(figsize=(4, 4), dpi=100)  # smaller, prevents overflow
 
         # Prepare labels
         class_labels = [f"Class {c}" for c in dist["Class"]]
