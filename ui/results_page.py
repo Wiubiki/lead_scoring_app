@@ -58,7 +58,7 @@ def render():
         st.markdown(
             f"""
             <h4 style="text-align:center; margin-bottom:0px;">
-                Listribution Table)
+                Distribution Table
             </h4>
             """,
             unsafe_allow_html=True,
@@ -75,7 +75,7 @@ def render():
         st.markdown(
             f"""
             <h4 style="text-align:center; margin-bottom:0px;">
-                Listribution Chart)
+                Distribution Chart
             </h4>
             """,
             unsafe_allow_html=True,
