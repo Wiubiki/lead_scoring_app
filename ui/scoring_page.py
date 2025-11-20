@@ -74,22 +74,7 @@ def render() -> None:
     else:
         render_stepper(2)
 
-    # ----- Display persistent summaries (always visible) -----
-    if st.session_state["fetch_summary"]:
-        st.markdown(
-            f"<div style='margin: -5px 0 15px 5px; color:#0a7f1c;'>"
-            f"{st.session_state['fetch_summary']}"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
 
-    if st.session_state["scoring_summary"]:
-        st.markdown(
-            f"<div style='margin: -10px 0 20px 5px; color:#0a7f1c;'>"
-            f"{st.session_state['scoring_summary']}"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
 
     # ======================================================================
     # --- Step 1: Retrieve Data -------------------------------------------------
@@ -237,6 +222,16 @@ def render() -> None:
 
                 st.success(summary)
                 st.rerun()
+
+    # Show scoring summary under the panel
+    if st.session_state["scoring_summary"] and st.session_state["wizard_scored"]:
+        st.markdown(
+            f"<div style='margin: -5px 0 25px 5px; color:#0a7f1c; font-weight:500;'>"
+            f"{st.session_state['scoring_summary']}"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
 
 
    # --- Step 3: Results (preview) --------------------------------------------
