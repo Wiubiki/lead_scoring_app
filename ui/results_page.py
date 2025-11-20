@@ -114,7 +114,25 @@ def render():
         ax.axis("equal")
 
         # Center the chart within its column
-        st.markdown("<div style='display: flex; justify-content: center;'>", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <style>
+            .piechart-center > div {
+                display: flex;
+                justify-content: center;
+            }
+            .piechart-center img {
+                margin-left: auto !important;
+                margin-right: auto !important;
+                display: block !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+        st.markdown("<div class='piechart-center'>", unsafe_allow_html=True)
         st.pyplot(fig, use_container_width=False)
         st.markdown("</div>", unsafe_allow_html=True)
 
