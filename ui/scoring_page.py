@@ -57,6 +57,9 @@ def render_stepper(current_step):
 
 def render() -> None:
     st.title("Data Retrieval & Scoring")
+    st.session_state.setdefault("fetch_summary", "")
+    st.session_state.setdefault("scoring_summary", "")
+
 
     # ---- Workflow Stepper (Option C layout) ----
     if not st.session_state.get("wizard_fetched"):
@@ -137,16 +140,20 @@ def render() -> None:
                     )
                 )
 
-                st.success("Fetched & prepared data.")
+                
 
                 st.session_state["wizard_fetched"] = True
+                st.success("Fetched & prepared data. • " f"DreamClass ✓ — {dc_count} records • "
+                        f"GA ✓ — {ga_count} records • "
+                        "Range applied"
+                )
 
-                if show_samples:
-                    st.subheader("DreamClass (sample, date-range)")
-                    st.dataframe(DC_range.head(20), use_container_width=True)
+                #if show_samples:
+                 #   st.subheader("DreamClass (sample, date-range)")
+                 #   st.dataframe(DC_range.head(20), use_container_width=True)
 
-                    st.subheader("GA (sample)")
-                    st.dataframe(GA_range.head(20), use_container_width=True)
+                #    st.subheader("GA (sample)")
+                #    st.dataframe(GA_range.head(20), use_container_width=True)
 
             except Exception as e:
                 st.session_state["wizard_fetched"] = False
