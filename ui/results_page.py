@@ -55,7 +55,14 @@ def render():
 
     # TABLE
     with colA:
-        st.markdown("### Distribution Table")
+        st.markdown(
+            f"""
+            <h4 style="text-align:center; margin-bottom:0px;">
+                Listribution Table)
+            </h4>
+            """,
+            unsafe_allow_html=True,
+        )
         st.dataframe(
             dist,
             use_container_width=True,
@@ -65,7 +72,14 @@ def render():
 
     # PIE CHART
     with colB:
-        st.markdown("### Distribution Pie Chart")
+        st.markdown(
+            f"""
+            <h4 style="text-align:center; margin-bottom:0px;">
+                Listribution Chart)
+            </h4>
+            """,
+            unsafe_allow_html=True,
+        )
 
         fig, ax = plt.subplots(figsize=(4, 4))  # smaller, prevents overflow
 
