@@ -17,83 +17,47 @@ st.set_page_config(
 # -------------------------------------------------------------------
 # GLOBAL CSS (Login + Sidebar Styling)
 # -------------------------------------------------------------------
-st.markdown(
-    """
-    <style>
-    /* LOGIN BACKGROUND */
-    body {
-        background: linear-gradient(180deg, #006550 0%, #004237 100%) !important;
-    }
+st.markdown("""
+<style>
 
-    /* SIDEBAR HEADER */
-    .sidebar-header {
-        background: #006550;
-        padding: 18px;
-        color: white;
-        font-size: 1.3rem;
-        font-weight: 600;
-        text-align: center;
-        border-radius: 6px;
-        margin-bottom: 12px;
-    }
+[data-testid="stAppViewContainer"] {
+    background: linear-gradient(180deg, #006550 0%, #004237 100%) !important;
+}
 
-    /* SIDEBAR NAV BUTTONS */
-    .nav-btn {
-        display: block;
-        padding: 12px 16px;
-        margin: 6px 0;
-        border-radius: 6px;
-        font-weight: 600;
-        text-align: left;
-        width: 100%;
-        border: 2px solid #00655022;
-        cursor: pointer;
-        font-size: 0.95rem;
-    }
-    .nav-btn-active {
-        background: #006550;
-        color: white !important;
-        border-color: #006550;
-    }
-    .nav-btn-done {
-        background: #e6f4ef;
-        color: #006550 !important;
-    }
-    .nav-btn-locked {
-        background: #f4f4f4;
-        color: #777 !important;
-        cursor: default;
-    }
+[data-testid="stAppViewContainer"] > .main {
+    background-color: transparent !important;
+}
 
-    /* LOGIN CARD */
-    .login-container {
-        max-width: 360px;
-        margin: 0 auto;
-        padding-top: 12vh;
-        text-align: center;
-    }
-    .login-box {
-        background: white;
-        padding: 30px 25px;
-        border-radius: 10px;
-        box-shadow: 0 0px 10px rgba(0,0,0,0.15);
-        margin-top: 20px;
-    }
-    .login-header {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: white;
-    }
-    .login-subheader {
-        font-size: 1.2rem;
-        font-weight: 400;
-        color: white;
-        margin-bottom: 30px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+.login-container {
+    max-width: 360px;
+    margin: 0 auto;
+    padding-top: 18vh;
+    text-align: center;
+}
+
+.login-box {
+    background: white;
+    padding: 30px 25px;
+    border-radius: 10px;
+    box-shadow: 0 0px 10px rgba(0,0,0,0.15);
+    margin-top: 20px;
+}
+
+.login-header {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: white;
+}
+
+.login-subheader {
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: white;
+    margin-bottom: 30px;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 
 # -------------------------------------------------------------------
