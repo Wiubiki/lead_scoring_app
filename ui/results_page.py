@@ -54,42 +54,66 @@ def render():
     # Side-by-side layout (table 33%, pie 67%)
     colA, colB = st.columns([1, 2])
 
+    # Table
     with colA:
-        st.markdown("### Distribution Table")
+        st.markdown(
+        f"""
+        <h4 style="text-align:center; margin-bottom:0px;">
+            Distribution Table
+        </h4>
+        """,
+        unsafe_allow_html=True,
+        )
+
         st.dataframe(dist, use_container_width=True, hide_index=True)
 
+    # Pie Chart
     with colB:
-        st.markdown("### Distribution Pie Chart")
+        st.markdown(
+        f"""
+        <h4 style="text-align:center; margin-bottom:0px;">
+            Distribution Chart
+        </h4>
+        """,
+        unsafe_allow_html=True,
+        )
 
         fig, ax = plt.subplots(figsize=(4, 4))  # limit size
 
-        # Correct label format
+        # Prepare labels
         class_labels = [f"Class {c}" for c in dist["Class"]]
         pct_labels = [f"{p}%" for p in dist["Class%"]]
         count_labels = [f"({c})" for c in dist["count"]]
 
-        # Draw pie clockwise starting from Class 1 at 12 o'clock
         wedges, _ = ax.pie(
             dist["count"],
             startangle=90,
-            counterclock=False,              # << clockwise!
+            counterclock=False,
             wedgeprops={"linewidth": 1, "edgecolor": "white"},
         )
 
         # External + internal labels
         for w, class_label, pct, count in zip(wedges, class_labels, pct_labels, count_labels):
             ang = (w.theta2 - w.theta1) / 2 + w.theta1
-            x = 1.15 * np.cos(np.deg2rad(ang))
-            y = 1.15 * np.sin(np.deg2rad(ang))
-            ax.text(x, y, class_label, ha="center", va="center", fontsize=10)
 
-            x2 = 0.7 * np.cos(np.deg2rad(ang))
-            y2 = 0.7 * np.sin(np.deg2rad(ang))
-            ax.text(x2, y2, f"{pct}\n{count}", ha="center", va="center", fontsize=9)
+            # External label (Class X)
+            label_radius = 1.35
+            x = label_radius * np.cos(np.deg2rad(ang))
+            y = label_radius * np.sin(np.deg2rad(ang))
+            ax.text(x, y, class_label, ha="center", va="center", fontsize=12)
+
+            # Internal label (% + count)
+            inner_radius = 0.7
+            x2 = inner_radius * np.cos(np.deg2rad(ang))
+            y2 = inner_radius * np.sin(np.deg2rad(ang))
+            ax.text(x2, y2, f"{pct}\n{count}", ha="center", va="center", fontsize=10)
 
         ax.axis("equal")
 
-        st.pyplot(fig, use_container_width=False)  # don't let Streamlit blow it up
+        # Center the chart within its column
+        st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+        st.pyplot(fig, use_container_width=False)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
     st.markdown("---")
