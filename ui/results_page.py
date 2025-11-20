@@ -26,33 +26,6 @@ def render():
     #  Lead Class Distribution Section
     # ============================================
 
-    # Compute distribution
-    dist = (
-        scored_df["lead_class"]
-        .value_counts()
-        .sort_index()
-        .rename_axis("Class")
-        .reset_index(name="count")
-    )
-    total_leads = dist["count"].sum()
-    dist["Class%"] = (dist["count"] / total_leads * 100).round(2)
-
-    # Unified centered header
-    st.markdown(
-        f"""
-        <h3 style="text-align:center; margin-bottom:0px;">
-            Lead Class Distribution (Total Leads: {total_leads})
-        </h3>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ============================================
-    #  Lead Class Distribution Section
-    # ============================================
-
     # Precompute distribution
     dist = (
         scored_df["lead_class"]
