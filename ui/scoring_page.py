@@ -164,12 +164,35 @@ def render() -> None:
                 st.session_state["wizard_fetched"] = True
                 st.success("Fetched & prepared data.")
 
+                # --- After successful fetch ---
                 if show_samples:
-                    st.subheader("DreamClass (sample, date-range)")
-                    st.dataframe(DC_range.head(20), use_container_width=True)
+                    st.subheader("Sample Previews")
 
-                    st.subheader("GA (sample)")
-                    st.dataframe(GA_range.head(20), use_container_width=True)
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.markdown("**DreamClass (filtered sample)**")
+                        if "DC_range" in st.session_state:
+                            st.dataframe(
+                                st.session_state["DC_range"].head(20),
+                                use_container_width=True,
+                                height=300
+                            )
+                        else:
+                            st.caption("No DreamClass data loaded.")
+
+                    with col2:
+                        st.markdown("**GA (sample)**")
+                        if "GA_range" in st.session_state:
+                            st.dataframe(
+                                st.session_state["GA_range"].head(20),
+                                use_container_width=True,
+                                height=300
+                            )
+                        else:
+                            st.caption("No GA data loaded.")
+
+
 
             except Exception as e:
                 st.session_state["wizard_fetched"] = False
@@ -186,33 +209,23 @@ def render() -> None:
         score_clicked = st.button("Run Scoring", type="primary", disabled=disabled)
 
         if score_clicked:
-            DC_raw = st.session_state.get("DC_raw")
-            GA_raw = st.session_state.get("GA_raw")
-
-            if DC_raw is None or GA_raw is None:
-                st.error("Fetch data first (Step 1).")
-            elif "createdAt" not in DC_raw.columns:
-                st.error("DC_raw missing 'createdAt'.")
+            if "DC_range" not in st.session_state or "GA_range" not in st.session_state:
+                st.error("Fetch data first.")
             else:
-                start_dt, end_dt = st.session_state.get("_date_range", (None, None))
-                if not start_dt or not end_dt:
-                    st.error("Please select a valid date range in Step 1.")
-                else:
-                    with st.spinner("Applying scoring…"):
-                        scored_df = apply_scoring(
-                            st.session_state["DC_range"],
-                            st.session_state["GA_range"],
-                        )
-
-                    st.session_state["scored_df"] = scored_df
-                    st.session_state["wizard_scored"] = True
-
-                    # Persist scoring summary outside the expander
-                    st.session_state["scoring_summary"] = (
-                        f"Scored {len(scored_df)} records."
+                with st.spinner("Applying scoring…"):
+                    scored_df = apply_scoring(
+                        st.session_state["DC_range"],
+                        st.session_state["GA_range"]
                     )
 
-                    st.success(st.session_state["scoring_summary"])
+                st.session_state["scored_df"] = scored_df
+                st.session_state["wizard_scored"] = True
+
+                summary = f"Scored {len(scored_df)} records."
+                st.session_state["scoring_summary"] = summary
+
+                st.success(summary)
+                st.rerun()
 
 
    # --- Step 3: Results (preview) --------------------------------------------
