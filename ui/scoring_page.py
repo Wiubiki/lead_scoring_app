@@ -162,7 +162,8 @@ def render() -> None:
                 progress.progress(100, text="Completed ✓")
 
                 st.session_state["wizard_fetched"] = True
-                st.success("Fetched & prepared data.")
+                st.success("Fetched & prepared data. • "f"DreamClass ✓ — {dc_count} records • "
+                    f"GA ✓ — {ga_count} records • ")
 
                 # --- After successful fetch ---
                 if show_samples:
