@@ -57,26 +57,43 @@ def render_stepper(current_step):
 
 def render() -> None:
     st.title("Data Retrieval & Scoring")
+
+    # ----- Persistent summaries -----
     st.session_state.setdefault("fetch_summary", "")
     st.session_state.setdefault("scoring_summary", "")
 
+    # ----- Stable wizard flags -----
+    st.session_state.setdefault("wizard_fetched", False)
+    st.session_state.setdefault("wizard_scored", False)
 
-    # ---- Workflow Stepper (Option C layout) ----
-    if not st.session_state.get("wizard_fetched"):
+    # ----- Stepper -----
+    if not st.session_state["wizard_fetched"]:
         render_stepper(0)
-    elif not st.session_state.get("wizard_scored"):
+    elif not st.session_state["wizard_scored"]:
         render_stepper(1)
     else:
         render_stepper(2)
 
+    # ----- Display persistent summaries (always visible) -----
+    if st.session_state["fetch_summary"]:
+        st.markdown(
+            f"<div style='margin: -5px 0 15px 5px; color:#0a7f1c;'>"
+            f"{st.session_state['fetch_summary']}"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
 
-    # Stable step flags (don’t auto-derive each rerun)
-    st.session_state.setdefault("wizard_fetched", False)
-    st.session_state.setdefault("wizard_scored", False)
+    if st.session_state["scoring_summary"]:
+        st.markdown(
+            f"<div style='margin: -10px 0 20px 5px; color:#0a7f1c;'>"
+            f"{st.session_state['scoring_summary']}"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
 
-
-
+    # ======================================================================
     # --- Step 1: Retrieve Data -------------------------------------------------
+    # ======================================================================
     with st.expander("1) Retrieve Data", expanded=not st.session_state["wizard_fetched"]):
         default_end = dt.date.today()
         default_start = default_end - dt.timedelta(days=30)
@@ -93,7 +110,7 @@ def render() -> None:
         else:
             start_dt, end_dt = default_start, default_end
 
-        # Clear scored results if the range changed
+        # If the range changes → reset scoring
         if st.session_state.get("_date_range") != (start_dt, end_dt):
             _set_date_range(start_dt, end_dt)
             _clear_scored()
@@ -104,26 +121,30 @@ def render() -> None:
 
         if fetch_clicked:
             try:
+                # Reset scoring summary since new fetch requires new scoring
+                st.session_state["scoring_summary"] = ""
+                st.session_state["wizard_scored"] = False
+
                 progress = st.progress(0, text="Starting…")
 
-                # --- Fetch DreamClass (raw) ---
+                # --- Fetch DreamClass raw ---
                 with st.spinner("Fetching DreamClass…"):
-                    DC_raw = fetch_dc()   # handler returns DC_raw
+                    DC_raw = fetch_dc()
                     st.session_state["DC_raw"] = DC_raw
-                progress.progress(50, text="DreamClass ✓")
+                progress.progress(40, text="DreamClass ✓")
 
-                # --- Fetch GA (raw; already date-scoped) ---
+                # --- Fetch GA raw ---
                 with st.spinner("Fetching GA…"):
                     start_s = start_dt.strftime("%Y-%m-%d")
                     end_s = end_dt.strftime("%Y-%m-%d")
                     GA_raw = fetch_ga(start_s, end_s)
                     st.session_state["GA_raw"] = GA_raw
-                progress.progress(80, text="GA ✓")
+                progress.progress(70, text="GA ✓")
 
-                # --- Apply date-range filtering only to DC ---
+                # --- Filter DreamClass by date only ---
                 from data.dreamclass_handler import filter_by_date
                 DC_range = filter_by_date(DC_raw, start_dt, end_dt)
-                GA_range = GA_raw  # GA is already date-filtered by API
+                GA_range = GA_raw  # Already scoped by API
 
                 st.session_state["DC_range"] = DC_range
                 st.session_state["GA_range"] = GA_range
@@ -131,37 +152,32 @@ def render() -> None:
                 dc_count = len(DC_range)
                 ga_count = len(GA_range)
 
-                progress.progress(
-                    100,
-                    text=(
-                        f"DreamClass ✓ — {dc_count} records • "
-                        f"GA ✓ — {ga_count} records • "
-                        "Range applied"
-                    )
+                # Persist summary outside the expander
+                st.session_state["fetch_summary"] = (
+                    f"DreamClass ✓ — {dc_count} records • "
+                    f"GA ✓ — {ga_count} records • "
+                    "Range applied"
                 )
 
-                
+                progress.progress(100, text="Completed ✓")
 
                 st.session_state["wizard_fetched"] = True
-                st.success("Fetched & prepared data. • " f"DreamClass ✓ — {dc_count} records • "
-                        f"GA ✓ — {ga_count} records • "
-                        "Range applied"
-                )
+                st.success("Fetched & prepared data.")
 
-                #if show_samples:
-                 #   st.subheader("DreamClass (sample, date-range)")
-                 #   st.dataframe(DC_range.head(20), use_container_width=True)
+                if show_samples:
+                    st.subheader("DreamClass (sample, date-range)")
+                    st.dataframe(DC_range.head(20), use_container_width=True)
 
-                #    st.subheader("GA (sample)")
-                #    st.dataframe(GA_range.head(20), use_container_width=True)
+                    st.subheader("GA (sample)")
+                    st.dataframe(GA_range.head(20), use_container_width=True)
 
             except Exception as e:
                 st.session_state["wizard_fetched"] = False
                 st.error(str(e))
 
-
-
+    # ======================================================================
     # --- Step 2: Run Scoring ---------------------------------------------------
+    # ======================================================================
     with st.expander(
         "2) Run Scoring Algorithm",
         expanded=st.session_state["wizard_fetched"] and not st.session_state["wizard_scored"],
@@ -185,23 +201,22 @@ def render() -> None:
                     with st.spinner("Applying scoring…"):
                         scored_df = apply_scoring(
                             st.session_state["DC_range"],
-                            st.session_state["GA_range"]
-)
+                            st.session_state["GA_range"],
+                        )
 
                     st.session_state["scored_df"] = scored_df
                     st.session_state["wizard_scored"] = True
-                    st.success(f"Scored {len(scored_df)} records.")
 
+                    # Persist scoring summary outside the expander
+                    st.session_state["scoring_summary"] = (
+                        f"Scored {len(scored_df)} records."
+                    )
+
+                    st.success(st.session_state["scoring_summary"])
 
 
    # --- Step 3: Results (preview) --------------------------------------------
-    with st.expander("DreamClass (sample, date-range)", expanded=False):
-        if "DC_raw" in st.session_state:
-            st.dataframe(st.session_state["DC_raw"].head(20), use_container_width=True)
 
-    with st.expander("GA (sample)", expanded=False):
-        if "GA_raw" in st.session_state:
-            st.dataframe(st.session_state["GA_raw"].head(20), use_container_width=True)
 
     # Show scored preview + CTA only if scoring done
     scored_df = st.session_state.get("scored_df")
