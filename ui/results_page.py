@@ -117,22 +117,17 @@ def render():
         st.markdown(
             """
             <style>
-            .piechart-center {
-                display: flex !important;
-                justify-content: center !important;
-                width: 100% !important;
-            }
-            .piechart-center img {
-                display: block !important;
-                margin-left: auto !important;
-                margin-right: auto !important;
+            .pie-wrapper {
+                max-width: 450px; /* match your figsize */
+                margin-left: auto;
+                margin-right: auto;
             }
             </style>
             """,
             unsafe_allow_html=True,
         )
 
-        st.markdown("<div class='piechart-center'>", unsafe_allow_html=True)
+        st.markdown("<div class='pie-wrapper'>", unsafe_allow_html=True)
         st.pyplot(fig, use_container_width=False)
         st.markdown("</div>", unsafe_allow_html=True)
 
