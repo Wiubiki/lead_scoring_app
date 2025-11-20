@@ -174,21 +174,24 @@ def render() -> None:
 
 
 
-    # --- Step 3: Results (preview) --------------------------------------------
+   # --- Step 3: Results (preview) --------------------------------------------
     with st.expander("DreamClass (sample, date-range)", expanded=False):
-        st.dataframe(st.session_state["DC_raw"].head(20), use_container_width=True)
+        if "DC_raw" in st.session_state:
+            st.dataframe(st.session_state["DC_raw"].head(20), use_container_width=True)
 
     with st.expander("GA (sample)", expanded=False):
-        st.dataframe(st.session_state["GA_raw"].head(20), use_container_width=True)
+        if "GA_raw" in st.session_state:
+            st.dataframe(st.session_state["GA_raw"].head(20), use_container_width=True)
 
-        if isinstance(df, pd.DataFrame) and not df.empty:
-            st.dataframe(df.head(30), use_container_width=True)
+    # Show scored preview + CTA only if scoring done
+    scored_df = st.session_state.get("scored_df")
+    if isinstance(scored_df, pd.DataFrame) and not scored_df.empty:
+        st.subheader("Scored Results (sample)")
+        st.dataframe(scored_df.head(30), use_container_width=True)
 
-            go = st.button("Open full Results page →")
-            if go:
-                st.session_state["nav"] = "Results"
-                st.rerun()
-
-
-        else:
-            st.caption("No scored data yet. Complete Steps 1 and 2.")
+        go = st.button("Open full Results page →")
+        if go:
+            st.session_state["nav"] = "Results"
+            st.rerun()
+    else:
+        st.caption("No scored data yet. Complete Steps 1 and 2.")
