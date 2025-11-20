@@ -37,9 +37,9 @@ def render_stepper(current_step):
 
     for i, step in enumerate(steps):
         if i < current_step:
-            icons.append(f"🟩 **{step}** ✓")
+            icons.append(f"🟩 {step} ✓")
         elif i == current_step:
-            icons.append(f"🟦 **{step}**")
+            icons.append(f"🟦 {step}")
         else:
             icons.append(f"⬜ {step}")
 
@@ -198,6 +198,16 @@ def render() -> None:
             except Exception as e:
                 st.session_state["wizard_fetched"] = False
                 st.error(str(e))
+
+    # Show fetch summary under the panel
+    if st.session_state["fetch_summary"] and st.session_state["wizard_fetched"]:
+        st.markdown(
+            f"<div style='margin: -5px 0 20px 5px; color:#0a7f1c; font-weight:500;'>"
+            f"{st.session_state['fetch_summary']}"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
 
     # ======================================================================
     # --- Step 2: Run Scoring ---------------------------------------------------
