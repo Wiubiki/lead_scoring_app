@@ -27,6 +27,18 @@ def render():
     # Lead Class Distribution Section
     # ============================================
 
+    dist = (
+        scored_df["lead_class"]
+        .value_counts()
+        .sort_index()
+        .rename_axis("Class")
+        .reset_index(name="count")
+    )
+
+    total_leads = dist["count"].sum()
+    dist["Class%"] = (dist["count"] / total_leads * 100).round(2)
+
+    # Unified centered header
     st.markdown(
         f"""
         <h3 style="text-align:center; margin-bottom:0px;">
@@ -38,76 +50,86 @@ def render():
 
     st.markdown("---")
 
-    # ---------- FLEXBOX LAYOUT ----------
-    st.markdown(
-        """
-        <div style="
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            align-items: flex-start;
-            width: 100%;
-            margin-top: 20px;
-            margin-bottom: 20px;
-        ">
-            <div style="flex: 1; max-width: 260px;">
-                <h4 style="text-align:center;">Distribution Table</h4>
-                <!-- TABLE_PLACEHOLDER -->
-            </div>
+    # Side-by-side layout (table 25%, pie 75%)
+    colA, colB = st.columns([1, 3])
 
-            <div style="flex: 2; display:flex; justify-content:center;">
-                <!-- PIE_PLACEHOLDER -->
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # TABLE
+    with colA:
+        st.markdown(
+            f"""
+            <h4 style="text-align:center; margin-bottom:0px;">
+                Distribution Table
+            </h4>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.dataframe(
+            dist,
+            use_container_width=True,
+            hide_index=True,
+            height=178
+        )
 
-    # --- Insert table into the placeholder ---
-    table_html = dist.to_html(index=False)
-    st.markdown(
-        table_html.replace(
-            "<table",
-            "<table style='width:100%; border-collapse: collapse; text-align:center; font-size:14px;'"
-        ),
-        unsafe_allow_html=True
-    )
+    # PIE CHART
+    with colB:
+        st.markdown(
+            f"""
+            <h4 style="text-align:center; margin-bottom:0px;">
+                Distribution Chart
+            </h4>
+            """,
+            unsafe_allow_html=True,
+        )
 
+        fig, ax = plt.subplots(figsize=(4, 4), dpi=100)  # smaller, prevents overflow
 
-    # Build fixed-size chart for consistency
-    fig, ax = plt.subplots(figsize=(3.5, 3.5))
+        # Prepare labels
+        class_labels = [f"Class {c}" for c in dist["Class"]]
+        pct_labels = [f"{p}%" for p in dist["Class%"]]
+        count_labels = [f"({c})" for c in dist["count"]]
 
-    # Prepare labels
-    class_labels = [f"Class {c}" for c in dist["Class"]]
-    pct_labels = [f"{p}%" for p in dist["Class%"]]
-    count_labels = [f"({c})" for c in dist["count"]]
+        wedges, _ = ax.pie(
+            dist["count"],
+            startangle=90,
+            counterclock=False,
+            wedgeprops={"linewidth": 1, "edgecolor": "white"},
+        )
 
-    wedges, _ = ax.pie(
-        dist["count"],
-        startangle=90,
-        counterclock=False,
-        wedgeprops={"linewidth": 1, "edgecolor": "white"},
-    )
+        # External + internal labels
+        for w, class_label, pct, count in zip(wedges, class_labels, pct_labels, count_labels):
+            ang = (w.theta2 - w.theta1) / 2 + w.theta1
 
-    # Labels
-    for w, class_label, pct, count in zip(wedges, class_labels, pct_labels, count_labels):
-        ang = (w.theta2 - w.theta1) / 2 + w.theta1
+            # External label (Class X)
+            label_radius = 1.35
+            x = label_radius * np.cos(np.deg2rad(ang))
+            y = label_radius * np.sin(np.deg2rad(ang))
+            ax.text(x, y, class_label, ha="center", va="center", fontsize=9)
 
-        label_radius = 1.25
-        x = label_radius * np.cos(np.deg2rad(ang))
-        y = label_radius * np.sin(np.deg2rad(ang))
-        ax.text(x, y, class_label, ha="center", va="center", fontsize=11)
+            # Internal label (% + count)
+            inner_radius = 0.7
+            x2 = inner_radius * np.cos(np.deg2rad(ang))
+            y2 = inner_radius * np.sin(np.deg2rad(ang))
+            ax.text(x2, y2, f"{pct}\n{count}", ha="center", va="center", fontsize=8)
 
-        inner_radius = 0.7
-        x2 = inner_radius * np.cos(np.deg2rad(ang))
-        y2 = inner_radius * np.sin(np.deg2rad(ang))
-        ax.text(x2, y2, f"{pct}\n{count}", ha="center", va="center", fontsize=10)
+        ax.axis("equal")
 
-    ax.axis("equal")
+        # Center the chart within its column (Streamlit-proof)
+        st.markdown(
+            """
+            <style>
+            .pie-wrapper {
+                max-width: 450px; /* match your figsize */
+                margin-left: auto;
+                margin-right: auto;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    # Render pie chart into the right flexbox div
-    chart_html = st.pyplot(fig)
-
+        st.markdown("<div class='pie-wrapper'>", unsafe_allow_html=True)
+        st.pyplot(fig, use_container_width=False)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
     st.markdown("---")
