@@ -24,10 +24,9 @@ def render():
     st.markdown("---")
 
     # ============================================
-    #  Lead Class Distribution Section
+    # Lead Class Distribution Section
     # ============================================
 
-    # Precompute distribution
     dist = (
         scored_df["lead_class"]
         .value_counts()
@@ -51,34 +50,24 @@ def render():
 
     st.markdown("---")
 
-    # Side-by-side layout (table 33%, pie 67%)
-    colA, colB = st.columns([1, 2])
+    # Side-by-side layout (table 25%, pie 75%)
+    colA, colB = st.columns([1, 3])
 
-    # Table
+    # TABLE
     with colA:
-        st.markdown(
-        f"""
-        <h4 style="text-align:center; margin-bottom:0px;">
-            Distribution Table
-        </h4>
-        """,
-        unsafe_allow_html=True,
+        st.markdown("### Distribution Table")
+        st.dataframe(
+            dist,
+            use_container_width=True,
+            hide_index=True,
+            height=160
         )
 
-        st.dataframe(dist, use_container_width=True, hide_index=True)
-
-    # Pie Chart
+    # PIE CHART
     with colB:
-        st.markdown(
-        f"""
-        <h4 style="text-align:center; margin-bottom:0px;">
-            Distribution Chart
-        </h4>
-        """,
-        unsafe_allow_html=True,
-        )
+        st.markdown("### Distribution Pie Chart")
 
-        fig, ax = plt.subplots(figsize=(4, 4))  # limit size
+        fig, ax = plt.subplots(figsize=(4, 4))  # smaller, prevents overflow
 
         # Prepare labels
         class_labels = [f"Class {c}" for c in dist["Class"]]
@@ -114,7 +103,6 @@ def render():
         st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
         st.pyplot(fig, use_container_width=False)
         st.markdown("</div>", unsafe_allow_html=True)
-
 
     st.markdown("---")
 
