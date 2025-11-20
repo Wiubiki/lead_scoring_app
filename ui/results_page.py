@@ -89,13 +89,13 @@ def render():
             label_radius = 1.35
             x = label_radius * np.cos(np.deg2rad(ang))
             y = label_radius * np.sin(np.deg2rad(ang))
-            ax.text(x, y, class_label, ha="center", va="center", fontsize=12)
+            ax.text(x, y, class_label, ha="center", va="center", fontsize=9)
 
             # Internal label (% + count)
             inner_radius = 0.7
             x2 = inner_radius * np.cos(np.deg2rad(ang))
             y2 = inner_radius * np.sin(np.deg2rad(ang))
-            ax.text(x2, y2, f"{pct}\n{count}", ha="center", va="center", fontsize=10)
+            ax.text(x2, y2, f"{pct}\n{count}", ha="center", va="center", fontsize=8)
 
         ax.axis("equal")
 
