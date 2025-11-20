@@ -125,7 +125,17 @@ def render() -> None:
                 st.session_state["DC_range"] = DC_range
                 st.session_state["GA_range"] = GA_range
 
-                progress.progress(100, text="DreamClass ✓ • GA ✓ • Range applied")
+                dc_count = len(DC_range)
+                ga_count = len(GA_range)
+
+                progress.progress(
+                    100,
+                    text=(
+                        f"DreamClass ✓ — {dc_count} records • "
+                        f"GA ✓ — {ga_count} records • "
+                        "Range applied"
+                    )
+                )
 
                 st.success("Fetched & prepared data.")
 
@@ -166,7 +176,10 @@ def render() -> None:
                     st.error("Please select a valid date range in Step 1.")
                 else:
                     with st.spinner("Applying scoring…"):
-                        scored_df = apply_scoring(DC_raw, GA_raw)
+                        scored_df = apply_scoring(
+                            st.session_state["DC_range"],
+                            st.session_state["GA_range"]
+)
 
                     st.session_state["scored_df"] = scored_df
                     st.session_state["wizard_scored"] = True
