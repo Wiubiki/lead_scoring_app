@@ -67,7 +67,7 @@ def render():
             dist,
             use_container_width=True,
             hide_index=True,
-            height=100%
+            height=178
         )
 
     # PIE CHART
