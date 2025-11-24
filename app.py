@@ -8,72 +8,84 @@ from auth_library import authenticate
 # -------------------------------------------------------------------
 # PAGE SETUP
 # -------------------------------------------------------------------
-st.set_page_config(
-    page_title="DreamClass Lead Scoring App",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+st.set_page_config(page_title="Lead Scoring App", layout="wide")
 
 # -------------------------------------------------------------------
 # GLOBAL CSS (Login + Sidebar Styling)
 # -------------------------------------------------------------------
-st.markdown("""
-<style>
+def inject_global_css():
+    """Set background depending on auth state + login styles."""
+    auth_ok = st.session_state.get("auth_ok", False)
 
-[data-testid="stAppViewContainer"] {
-    background: linear-gradient(180deg, #006550 0%, #004237 100%) !important;
-}
+    # Background: gradient on login, white after login
+    if not auth_ok:
+        bg = "linear-gradient(180deg, #006550 0%, #004237 100%)"
+        padding_top = "18vh"
+    else:
+        bg = "#FFFFFF"
+        padding_top = "2rem"
 
-[data-testid="stAppViewContainer"] > .main {
-    background-color: transparent !important;
-}
+    st.markdown(
+        f"""
+        <style>
+        /* Main app background */
+        [data-testid="stAppViewContainer"] {{
+            background: {bg} !important;
+        }}
 
-.login-container {
-    max-width: 360px;
-    margin: 0 auto;
-    padding-top: 18vh;
-    text-align: center;
-}
+        [data-testid="stAppViewContainer"] .block-container {{
+            padding-top: {padding_top} !important;
+        }}
 
-.login-box {
-    background: white;
-    padding: 30px 25px;
-    border-radius: 10px;
-    box-shadow: 0 0px 10px rgba(0,0,0,0.15);
-    margin-top: 20px;
-}
-
-.login-header {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: white;
-}
-
-.login-subheader {
-    font-size: 1.2rem;
-    font-weight: 400;
-    color: white;
-    margin-bottom: 30px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
+        /* Login layout classes (only used on login screen) */
+        .login-container {{
+            max-width: 420px;
+            margin: 0 auto;
+            text-align: center;
+        }}
+        .login-box {{
+            background: white;
+            padding: 30px 25px;
+            border-radius: 10px;
+            box-shadow: 0 0px 10px rgba(0,0,0,0.15);
+            margin-top: 20px;
+        }}
+        .login-header {{
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: white;
+        }}
+        .login-subheader {{
+            font-size: 1.2rem;
+            font-weight: 400;
+            color: white;
+            margin-bottom: 30px;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # -------------------------------------------------------------------
 # AUTH LAYER
 # -------------------------------------------------------------------
 def require_auth():
+    """Render login UI and block app until authentication succeeds."""
     if st.session_state.get("auth_ok"):
         return True
 
     # LOGIN PAGE
     st.markdown("<div class='login-container'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-header'>DreamClass Lead Scoring App</div>", unsafe_allow_html=True)
-    st.markdown("<div class='login-subheader'>Please login to continue</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='login-header'>DreamClass Lead Scoring App</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<div class='login-subheader'>Please login to continue</div>",
+        unsafe_allow_html=True,
+    )
 
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-
     with st.form("login_form", clear_on_submit=False):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -90,12 +102,12 @@ def require_auth():
 
         if authed:
             st.session_state["auth_ok"] = True
-            st.session_state["nav"] = 1   # Step 1
-            st.session_state["completed"] = set()
+            st.session_state["nav"] = "Scoring"
             st.rerun()
         else:
             st.error("Invalid credentials.")
 
+    # If we're here, still not authenticated
     st.stop()
 
 
@@ -138,18 +150,29 @@ def render_sidebar():
 # MAIN ROUTER
 # -------------------------------------------------------------------
 def main():
+    inject_global_css()
     require_auth()
     render_sidebar()
 
-    nav = st.session_state.get("nav", 1)
+    if "nav" not in st.session_state:
+        st.session_state["nav"] = "Scoring"
 
-    if nav == 1:
+    nav_options = ["Scoring", "Results", "Reports"]
+    current = st.session_state.get("nav", "Scoring")
+
+    nav = st.sidebar.radio(
+        "Navigation",
+        nav_options,
+        index=nav_options.index(current),
+    )
+    st.session_state["nav"] = nav
+
+    if nav == "Scoring":
         render_scoring()
-    elif nav == 2:
-        render_scoring()   # scoring page handles the second step
-    elif nav == 3:
+    elif nav == "Results":
         render_results()
-
+    else:
+        render_reports()
 
 # -------------------------------------------------------------------
 if __name__ == "__main__":
