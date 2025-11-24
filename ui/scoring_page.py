@@ -26,7 +26,8 @@ def _get_ga_cached(start_date: str, end_date: str) -> pd.DataFrame:
 
 def _clear_scored():
     st.session_state.pop("scored_df", None)
-    st.session_state["wizard_scored"] = False
+    st.session_state["wizard_current_step"] = 0
+    st.session_state["wizard_completed"].clear()
 
 def _set_date_range(start: dt.date, end: dt.date):
     st.session_state["_date_range"] = (start, end)
@@ -62,24 +63,16 @@ def render() -> None:
     st.session_state.setdefault("fetch_summary", "")
     st.session_state.setdefault("scoring_summary", "")
 
-    # ----- Stable wizard flags -----
-    st.session_state.setdefault("wizard_fetched", False)
-    st.session_state.setdefault("wizard_scored", False)
 
     # ----- Stepper -----
-    if not st.session_state["wizard_fetched"]:
-        render_stepper(0)
-    elif not st.session_state["wizard_scored"]:
-        render_stepper(1)
-    else:
-        render_stepper(2)
+    render_stepper(st.session_state.get("wizard_current_step", 0))
 
 
 
     # ======================================================================
     # --- Step 1: Retrieve Data -------------------------------------------------
     # ======================================================================
-    with st.expander("1) Retrieve Data", expanded=not st.session_state["wizard_fetched"]):
+    with st.expander("1) Retrieve Data", expanded=(st.session_state["wizard_current_step"] == 0)):
         default_end = dt.date.today()
         default_start = default_end - dt.timedelta(days=30)
 
@@ -108,7 +101,6 @@ def render() -> None:
             try:
                 # Reset scoring summary since new fetch requires new scoring
                 st.session_state["scoring_summary"] = ""
-                st.session_state["wizard_scored"] = False
 
                 progress = st.progress(0, text="Starting…")
 
@@ -146,46 +138,25 @@ def render() -> None:
 
                 progress.progress(100, text="Completed ✓")
 
-                st.session_state["wizard_fetched"] = True
-                st.success("Fetched & prepared data. • "f"DreamClass ✓ — {dc_count} records • "
-                    f"GA ✓ — {ga_count} records • ")
+                # ---------------------------------------
+                # NEW WIZARD LOGIC (replace old flags)
+                # ---------------------------------------
+                st.session_state["wizard_current_step"] = 1
+                st.session_state["wizard_completed"].add(0)
 
-                # --- After successful fetch ---
-                if show_samples:
-                    st.subheader("Sample Previews")
-
-                    col1, col2 = st.columns(2)
-
-                    with col1:
-                        st.markdown("**DreamClass (filtered sample)**")
-                        if "DC_range" in st.session_state:
-                            st.dataframe(
-                                st.session_state["DC_range"].head(20),
-                                use_container_width=True,
-                                height=300
-                            )
-                        else:
-                            st.caption("No DreamClass data loaded.")
-
-                    with col2:
-                        st.markdown("**GA (sample)**")
-                        if "GA_range" in st.session_state:
-                            st.dataframe(
-                                st.session_state["GA_range"].head(20),
-                                use_container_width=True,
-                                height=300
-                            )
-                        else:
-                            st.caption("No GA data loaded.")
-
-
+                st.success(
+                    "Fetched & prepared data. • "
+                    f"DreamClass ✓ — {dc_count} records • "
+                    f"GA ✓ — {ga_count} records • "
+                )
+                st.rerun()
 
             except Exception as e:
-                st.session_state["wizard_fetched"] = False
                 st.error(str(e))
 
+
     # Show fetch summary under the panel
-    if st.session_state["fetch_summary"] and st.session_state["wizard_fetched"]:
+    if st.session_state["fetch_summary"] and 0 in st.session_state["wizard_completed"]:
         st.markdown(
             f"<div style='margin: -5px 0 20px 5px; color:#0a7f1c; font-weight:500;'>"
             f"{st.session_state['fetch_summary']}"
@@ -199,9 +170,10 @@ def render() -> None:
     # ======================================================================
     with st.expander(
         "2) Run Scoring Algorithm",
-        expanded=st.session_state["wizard_fetched"] and not st.session_state["wizard_scored"],
+        expanded=(st.session_state["wizard_current_step"] == 1),
     ):
-        disabled = not st.session_state["wizard_fetched"]
+
+        disabled = not (0 in st.session_state["wizard_completed"])
         score_clicked = st.button("Run Scoring", type="primary", disabled=disabled)
 
         if score_clicked:
@@ -215,7 +187,8 @@ def render() -> None:
                     )
 
                 st.session_state["scored_df"] = scored_df
-                st.session_state["wizard_scored"] = True
+                st.session_state["wizard_current_step"] = 2
+                st.session_state["wizard_completed"].add(1)
 
                 summary = f"Scored {len(scored_df)} records."
                 st.session_state["scoring_summary"] = summary
@@ -224,7 +197,8 @@ def render() -> None:
                 st.rerun()
 
     # Show scoring summary under the panel
-    if st.session_state["scoring_summary"] and st.session_state["wizard_scored"]:
+    if st.session_state["scoring_summary"] and 1 in st.session_state["wizard_completed"]:
+
         st.markdown(
             f"<div style='margin: -5px 0 25px 5px; color:#0a7f1c; font-weight:500;'>"
             f"{st.session_state['scoring_summary']}"
@@ -246,6 +220,9 @@ def render() -> None:
         go = st.button("Open full Results page →")
         if go:
             st.session_state["nav"] = "Results"
+            # Mark Results (Step 3) as complete
+            st.session_state["wizard_current_step"] = 2
+            st.session_state["wizard_completed"].add(2)
             st.rerun()
     else:
         st.caption("No scored data yet. Complete Steps 1 and 2.")
