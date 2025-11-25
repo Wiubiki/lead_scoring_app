@@ -25,6 +25,7 @@ test_env/
 *.tmp
 *.bak
 *.swp
+*.csv
 .DS_Store
 
 # Ignore deprecated, input and output data folders
@@ -44,3 +45,5 @@ desktop.ini
 
 # Ignore submodule
 app_sensitivefiles/*
+
+

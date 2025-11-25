@@ -3,7 +3,7 @@ import streamlit as st
 import pathlib
 from ui.scoring_page import render as render_scoring
 from ui.results_page import render as render_results
-from ui.reports_page import render as render_reports
+from ui.reports_page import render_reports_page as render_reports
 from auth_library import authenticate
 
 
@@ -107,8 +107,11 @@ def main():
         render_scoring()
     elif current == "Results":
         render_results()
-    else:
+    elif current == "Reports":
         render_reports()
+    else:
+        render_scoring()
+
 
 
 # -------------------------------------------------------------------
@@ -163,7 +166,12 @@ def render_sidebar():
     step_button("Fetch Data", 0)
     step_button("Run Scoring", 1)
     step_button("View Results", 2)
-
+    st.sidebar.markdown("---")
+    
+    # Reports Button
+    if st.sidebar.button("📄 Reports", key="nav-reports"):
+        st.session_state["nav"] = "Reports"
+        st.rerun()
 
 
 

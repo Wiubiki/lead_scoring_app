@@ -57,7 +57,7 @@ def render_stepper(current_step):
 
 
 def render() -> None:
-    st.title("Data Retrieval & Scoring")
+    st.markdown("<h1 style='color: #006550; text-align: center;'>Data Retrieval & Scoring</h1>", unsafe_allow_html=True)
 
     # ----- Persistent summaries -----
     st.session_state.setdefault("fetch_summary", "")
@@ -92,6 +92,10 @@ def render() -> None:
         if st.session_state.get("_date_range") != (start_dt, end_dt):
             _set_date_range(start_dt, end_dt)
             _clear_scored()
+            # Store scoring period for Results Page + Save-to-Supabase
+            st.session_state["scoring_period_start"] = start_dt
+            st.session_state["scoring_period_end"] = end_dt
+
 
         colA, colB = st.columns(2)
         fetch_clicked = colA.button("Fetch Data", type="primary")
