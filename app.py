@@ -5,13 +5,15 @@ from ui.scoring_page import render as render_scoring
 from ui.results_page import render as render_results
 from ui.reports_page import render_reports_page as render_reports
 from auth_library import authenticate
+from auth_library import require_auth
+
 
 
 # -------------------------------------------------------------------
 # PAGE SETUP
 # -------------------------------------------------------------------
 st.set_page_config(page_title="Lead Scoring App", layout="wide")
-if st.session_state.get("auth_ok"):
+if st.session_state.get("authenticated"):
     st.markdown("<body class='logged-in'>", unsafe_allow_html=True)
 else:
     st.markdown("<body class='logged-out'>", unsafe_allow_html=True)
@@ -32,7 +34,7 @@ load_css(css_path)
 
 
 # Dynamic background logic BEFORE rendering the page
-if not st.session_state.get("auth_ok"):
+if not st.session_state.get("authenticated"):
     st.markdown("""
         <style>
             :root {
@@ -53,39 +55,8 @@ else:
 # -------------------------------------------------------------------
 # AUTH LAYER
 # -------------------------------------------------------------------
-def require_auth():
-    if st.session_state.get("auth_ok"):
-        return True
-    
 
-    # Page headings
-    st.title("DreamClass Lead Scoring App")
-    st.subheader("Please login to continue")
 
-    # Login box container (you still want this — styling hook + layout)
-    login_container = st.container(key="login-box")
-
-    with login_container:
-        with st.form("login_form", clear_on_submit=False):
-            username = st.text_input("Username", key="login-username")
-            password = st.text_input("Password", type="password", key="login-password")
-            submitted = st.form_submit_button("Login")
-
-    if submitted:
-        try:
-            authed = authenticate(username, password)
-        except Exception as e:
-            st.error(f"Authentication error: {e}")
-            st.stop()
-
-        if authed:
-            st.session_state["auth_ok"] = True
-            st.session_state["nav"] = "Scoring"
-            st.rerun()
-        else:
-            st.error("Invalid credentials.")
-
-    st.stop()
 
 
 
@@ -93,25 +64,48 @@ def require_auth():
 # MAIN ROUTER 
 # -------------------------------------------------------------------
 def main():
-    if "wizard_current_step" not in st.session_state:
-        st.session_state["wizard_current_step"] = 0
-    if "wizard_completed" not in st.session_state:
-        st.session_state["wizard_completed"] = set()
-
     require_auth()
-    render_sidebar()
 
-    current = st.session_state.get("nav", "Scoring")
+    is_admin = st.session_state.get("is_admin", False)
 
-    if current == "Scoring":
-        render_scoring()
-    elif current == "Results":
-        render_results()
-    elif current == "Reports":
-        render_reports()
+    # ------------------------------
+    # ADMIN: full app
+    # ------------------------------
+    if is_admin:
+
+        # Wizard/session setup
+        if "wizard_current_step" not in st.session_state:
+            st.session_state["wizard_current_step"] = 0
+        if "wizard_completed" not in st.session_state:
+            st.session_state["wizard_completed"] = set()
+
+        # Render admin sidebar
+        render_sidebar()
+
+        # Normal navigation
+        current = st.session_state.get("nav", "Scoring")
+
+        if current == "Scoring":
+            render_scoring()
+        elif current == "Results":
+            render_results()
+        elif current == "Reports":
+            render_reports()
+        else:
+            render_scoring()
+
+    # ------------------------------
+    # NON-ADMIN: Reports only
+    # ------------------------------
     else:
-        render_scoring()
+        st.session_state["nav"] = "Reports"
 
+        # Minimal sidebar (optional)
+        with st.sidebar:
+            st.markdown("## DreamClass Lead Scoring App")
+            st.caption("Read-only access")
+
+        render_reports()
 
 
 # -------------------------------------------------------------------
