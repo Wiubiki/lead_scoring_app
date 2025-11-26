@@ -122,3 +122,15 @@ button[disabled] {
 }
 
 
+.stMultiSelect span {
+    max-width: 200px;
+}
+
+#reports-summary-row {
+    padding: 8px;
+    background: linear-gradient(180deg, #05a988 0%, #00241e 100%) !important;
+    border-radius: 8px;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: center;
+}

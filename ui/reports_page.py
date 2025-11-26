@@ -6,6 +6,14 @@ import streamlit as st
 
 from utils.supabase_client import supabase
 
+from utils.advanced_analytics import (
+    load_lead_quality_timeseries,
+    compute_xmr,
+    xmr_interpretation,
+)
+
+from ui.widgets.xmr_charts import render_xmr_chart
+
 
 # -------------------------------------------------------------------
 # CONSTANTS
@@ -33,7 +41,7 @@ def load_scoring_runs() -> List[dict]:
             "id, env, period_start, period_end, file_key, "
             "lead_count, data_type"
         )
-        .order("period_end", desc=True)
+        .order("period_end")
         .execute()
     )
 
@@ -167,11 +175,47 @@ def load_data_for_runs(
 
 
 # -------------------------------------------------------------------
+# Advanced Analytics: XmR tab content
+# -------------------------------------------------------------------
+
+def render_xmr_tab():
+    st.subheader("Lead Quality Over Time (XmR)")
+
+    df_ts = load_lead_quality_timeseries()
+    if df_ts.empty or len(df_ts) < 2:
+        st.info("Not enough periods in lead_quality_timeseries to compute XmR.")
+        return
+
+    df_ts = df_ts.sort_values("period_end")
+    dates = df_ts["period_end"]
+
+    # CLASS 1 %
+    class1_pct = df_ts["class_1_pct"] * 100.0
+    stats_q = compute_xmr(class1_pct)
+
+    st.markdown("### Class 1 %")
+    render_xmr_chart("Class 1 % over time", dates, class1_pct, stats_q)
+
+    st.markdown("### Interpretation")
+    st.markdown(xmr_interpretation(dates, class1_pct, stats_q))
+
+    # TOTAL LEADS
+    total_leads = df_ts["total_leads"].astype(float)
+    stats_n = compute_xmr(total_leads)
+
+    st.markdown("### Total Leads")
+    render_xmr_chart("Total leads per period", dates, total_leads, stats_n)
+
+
+# -------------------------------------------------------------------
 # MAIN PAGE
 # -------------------------------------------------------------------
 
 def render_reports_page():
-    st.title("Reports")
+    st.markdown(
+        "<h1 style='color: #006550; text-align: center;'>Reports</h1>",
+        unsafe_allow_html=True,
+    )
 
     # ---------------------------------------------------------------
     # 1. Load runs
@@ -181,7 +225,7 @@ def render_reports_page():
         st.info("No scoring runs found in Supabase yet.")
         return
 
-    # Already ordered by period_end DESC from Supabase, but be safe
+    # Already ordered by period_end from Supabase, but be safe
     runs_sorted = sorted(
         runs,
         key=lambda r: str(r.get("end") or ""),
@@ -201,7 +245,10 @@ def render_reports_page():
     # ---------------------------------------------------------------
     # 3. Run selection UI
     # ---------------------------------------------------------------
-    st.subheader("Scoring Runs (2-week batches)")
+    st.markdown(
+        "<h3 style='color: #006550; text-align: center;'>Scoring Runs (2-week batches)</h3>",
+        unsafe_allow_html=True,
+    )
 
     col1, col2, col3, col4 = st.columns([1, 1, 1, 1.5])
 
@@ -274,7 +321,10 @@ def render_reports_page():
     # ---------------------------------------------------------------
     # 5. Lead Class filter (only meaningful for classes 1–4)
     # ---------------------------------------------------------------
-    st.subheader("Filters")
+    st.markdown(
+        "<h3 style='color: #006550; text-align: center;'>Filter by Lead Class</h3>",
+        unsafe_allow_html=True,
+    )
 
     # Determine available classes:
     full_classes = set()
@@ -291,7 +341,9 @@ def render_reports_page():
     if stored is None:
         default_classes = available_classes
     else:
-        default_classes = [c for c in stored if c in available_classes] or available_classes
+        default_classes = [
+            c for c in stored if c in available_classes
+        ] or available_classes
 
     selected_classes = st.multiselect(
         "Select Lead Class",
@@ -316,18 +368,13 @@ def render_reports_page():
 
     # ---------------------------------------------------------------
     # 6. Summary row (Total + per-class)
-    #    Combines FULL + SUMMARY runs coherently.
     # ---------------------------------------------------------------
-    # Full side: counts based on df_filtered
     full_class_counts = (
         df_filtered["lead_class"].value_counts().to_dict()
         if not df_filtered.empty and "lead_class" in df_filtered.columns
         else {}
     )
 
-    summary_parts = []
-
-    # Compute total and per-class numbers across full + summary
     total_all = 0
     per_class_display: List[str] = []
 
@@ -336,12 +383,8 @@ def render_reports_page():
         summary_c = int(summary_totals.get(cls, 0))
         cls_total = full_c + summary_c
         total_all += cls_total
-
-        perc = None
-        # We will compute percentage after we know total_all; store data
         per_class_display.append((cls, cls_total))
 
-    # Now compute percentages safely
     summary_text_segments = [f"<strong>Total scored leads:</strong> {total_all}"]
 
     for cls, cls_total in per_class_display:
@@ -366,7 +409,10 @@ def render_reports_page():
     # ---------------------------------------------------------------
     # 7. Lead table + CSV download (FULL runs only)
     # ---------------------------------------------------------------
-    st.subheader("Scored Leads (row-level data from FULL runs)")
+    st.markdown(
+        "<h3 style='color: #006550; text-align: center;'>Scored Leads (row-level data from FULL runs)</h3>",
+        unsafe_allow_html=True,
+    )
 
     if df_filtered.empty:
         if has_full_rows:
@@ -390,6 +436,25 @@ def render_reports_page():
             mime="text/csv",
             key="reports-download-csv",
         )
+
+    # ---------------------------------------------------------------
+    # 8. Advanced Analytics (tabs) - BELOW everything else
+    # ---------------------------------------------------------------
+    st.markdown("---")
+    st.markdown(
+        "<h2 style='color: #006550; text-align: center;'>Advanced Analytics</h2>",
+        unsafe_allow_html=True,
+    )
+
+    tab_xmr, tab_future = st.tabs(
+        ["Lead Quality (XmR)", "More analytics (coming soon)"]
+    )
+
+    with tab_xmr:
+        render_xmr_tab()
+
+    with tab_future:
+        st.info("Additional analytics will appear here in future versions.")
 
 
 # -------------------------------------------------------------------

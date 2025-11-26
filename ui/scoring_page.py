@@ -218,7 +218,7 @@ def render() -> None:
     # Show scored preview + CTA only if scoring done
     scored_df = st.session_state.get("scored_df")
     if isinstance(scored_df, pd.DataFrame) and not scored_df.empty:
-        st.subheader("Scored Results (sample)")
+        st.markdown("<h3 style='color: #006550; text-align: center;'>Scored Results (sample)</h3>", unsafe_allow_html=True)
         st.dataframe(scored_df.head(30), use_container_width=True)
 
         go = st.button("Open full Results page →")

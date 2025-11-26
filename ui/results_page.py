@@ -5,98 +5,11 @@ import numpy as np
 import datetime as dt
 import io
 from utils.supabase_client import supabase
+from utils.supabase_client import save_scoring_run
+
 
 def render():
     st.markdown("<h1 style='color: #006550; text-align: center;'>Results</h1>", unsafe_allow_html=True)
-
-
-    # --------------------------
-    # Helper: save scoring run to Supabase
-    # --------------------------
-    def save_scoring_run_to_supabase(df: pd.DataFrame) -> None:
-        """
-        Uploads the scored DataFrame as a Parquet file to the
-        'scoring-runs-nightly' bucket and upserts a row into the
-        public.scoring_runs table.
-        """
-        # 1) Get scoring period from session
-        period_start = st.session_state.get("scoring_period_start")
-        period_end = st.session_state.get("scoring_period_end")
-
-        if period_start is None or period_end is None:
-            st.error("Scoring period is not available in session. Please re-run scoring.")
-            return
-
-        # Normalise to date objects
-        if isinstance(period_start, dt.datetime):
-            period_start = period_start.date()
-        if isinstance(period_end, dt.datetime):
-            period_end = period_end.date()
-
-        if not isinstance(period_start, dt.date) or not isinstance(period_end, dt.date):
-            st.error("Scoring period has invalid format. Please re-run scoring.")
-            return
-
-        start_str = period_start.isoformat()
-        end_str = period_end.isoformat()
-        year_str = str(period_start.year)
-
-        # 2) Build file_key
-        file_key = f"full/{year_str}/{start_str}__{end_str}.parquet"
-
-        # 3) Clean up DataFrame for Parquet
-
-        # Work on a copy so we don't mutate session state by accident
-        df_to_save = df.copy()
-
-        # Ensure sign_up is numeric with proper missing values
-        if "sign_up" in df_to_save.columns:
-            # Convert "missing" (and any non-numeric junk) to NaN, keep 0/1 as numbers
-            df_to_save["sign_up"] = pd.to_numeric(df_to_save["sign_up"], errors="coerce")
-
-        # Serialise DataFrame to Parquet in memory
-        buffer = io.BytesIO()
-        df_to_save.to_parquet(buffer, index=False)
-        buffer.seek(0)
-        data_bytes = buffer.getvalue()
-
-        # 4) Upload to Supabase Storage (with upsert)
-        bucket_name = "scoring-runs-nightly"
-
-        try:
-            storage_resp = supabase.storage.from_(bucket_name).upload(
-                path=file_key,
-                file=data_bytes,
-                file_options={"upsert": "true"},
-            )
-        except Exception as e:
-            st.error(f"Failed to upload Parquet to Supabase Storage: {e}")
-            return
-
-        # 5) Upsert metadata row into scoring_runs
-        lead_count = int(len(df))
-
-        payload = {
-            "env": "nightly",
-            "data_type": "full",
-            "period_start": start_str,
-            "period_end": end_str,
-            "file_key": file_key,
-            "lead_count": lead_count,
-            "created_by": "admin_results_page",
-            "notes": None,
-        }
-
-        try:
-            supabase.table("scoring_runs").upsert(payload).execute()
-        except Exception as e:
-            st.error(f"Failed to upsert scoring_runs metadata: {e}")
-            return
-
-        st.success(
-            f"Saved scoring run to Supabase: {start_str} → {end_str} "
-            f"({lead_count} leads)."
-        )
 
 
     # --------------------------
@@ -109,18 +22,32 @@ def render():
         return
 
     # --------------------------
-    # Filters Panel (Basic)
+    # Scored Leads Table Panel (Basic)
     # --------------------------
-    with st.expander("Filters", expanded=False):
+    with st.expander("Scored Leads", expanded=False):
         st.dataframe(scored_df, use_container_width=True)
 
     st.markdown("---")
 
     # --------------------------
-    # Admin save action
+    # Helper: save scoring run to Supabase
     # --------------------------
     if st.button("💾 Save scoring run to Supabase", type="primary"):
-        save_scoring_run_to_supabase(scored_df)
+        period_start = st.session_state.get("scoring_period_start")
+        period_end = st.session_state.get("scoring_period_end")
+
+        if not period_start or not period_end:
+            st.error("Scoring period is missing. Please re-run scoring.")
+        else:
+            try:
+                run_row = save_scoring_run(scored_df, period_start, period_end)
+                st.success(
+                    f"Saved scoring run to Supabase: "
+                    f"{run_row['period_start']} → {run_row['period_end']} "
+                    f"({run_row['lead_count']} leads)."
+                )
+            except Exception as e:
+                st.error(f"Failed to save scoring run: {e}")
 
 
     # ============================================
@@ -244,7 +171,7 @@ def render():
 
     st.markdown("## Export")
 
-    col1, col2, col3 = st.columns([1, 1, 1])
+    col1, col2 = st.columns([1, 1])
 
     # CSV Export
     csv_data = scored_df.to_csv(index=False).encode("utf-8")
@@ -272,11 +199,3 @@ def render():
         )
         st.caption("For analytics pipelines and large datasets")
 
-    # Supabase placeholder
-    with col3:
-        st.button(
-            "Save to Supabase (coming soon)",
-            type="secondary",
-            disabled=True,
-        )
-        st.caption("Upload to secure storage (not yet implemented)")
