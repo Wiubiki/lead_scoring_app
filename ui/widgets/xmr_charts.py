@@ -150,7 +150,7 @@ def render_xmr_chart(
         )
 
     fig_x.update_layout(
-        title="Individuals Chart",
+        title="X Chart",
         xaxis_title="Observation",
         yaxis_title=y_label,
         hovermode="x unified",
@@ -226,7 +226,7 @@ def render_xmr_chart(
         )
 
     fig_mr.update_layout(
-        title="Moving Range Chart",
+        title="Moving Range (mR) Chart",
         xaxis_title="Observation",
         yaxis_title="Moving Range",
         hovermode="x unified",

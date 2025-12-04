@@ -134,3 +134,15 @@ button[disabled] {
     color: #ffffff;
     text-align: center;
 }
+
+#lead-quality-index-xmr-charts {
+    color:#000000;
+}
+
+#interpretation {
+    text-align:center;
+}
+
+.h4 {
+    color:#ffffff;
+}

@@ -288,3 +288,87 @@ def xmr_interpretation(dates: pd.Series, series: pd.Series, stats: dict) -> str:
         )
 
     return "\n".join(bullets)
+
+def mr_interpretation(dates: pd.Series, series: pd.Series, stats: dict) -> str:
+    """
+    Interpretation for the Moving Range (mR) chart.
+
+    Uses:
+      - stats["mr"]: moving ranges (length N-1)
+      - stats["mr_bar"]: average moving range
+      - stats["ucl_mr"]: upper control limit for MR
+    """
+
+    mr = stats.get("mr")
+    mr_bar = stats.get("mr_bar")
+    ucl_mr = stats.get("ucl_mr")
+
+    if mr is None or len(mr) == 0 or mr_bar is None or ucl_mr is None:
+        return "- Not enough data to interpret the Moving Range chart."
+
+    mr = np.asarray(mr, dtype=float)
+
+    # MR has N-1 points, align them with dates[1:]
+    if len(dates) != len(mr) + 1:
+        # Fallback: just use the last len(mr) dates
+        mr_dates = dates.iloc[-len(mr):]
+    else:
+        mr_dates = dates.iloc[1:]
+
+    bullets = []
+
+    # Latest MR vs average
+    latest_mr = mr[-1]
+    latest_date = mr_dates.iloc[-1].strftime("%Y-%m-%d")
+
+    if latest_mr > mr_bar:
+        dir_str = "above"
+    elif latest_mr < mr_bar:
+        dir_str = "below"
+    else:
+        dir_str = "equal to"
+
+    bullets.append(
+        f"- Latest moving range ({latest_mr:.2f}) on {latest_date} is **{dir_str}** "
+        f"the long-term average MR ({mr_bar:.2f})."
+    )
+
+    # Out-of-control MR points
+    mask_ooc = mr > ucl_mr
+    num_ooc = int(mask_ooc.sum())
+
+    if num_ooc == 0:
+        bullets.append(
+            "- No MR values above the MR control limit (no obvious spikes in variation)."
+        )
+    else:
+        first_ooc_idx = int(np.where(mask_ooc)[0][0])
+        first_ooc_date = mr_dates.iloc[first_ooc_idx].strftime("%Y-%m-%d")
+        bullets.append(
+            f"- {num_ooc} MR value(s) exceed the MR control limit → sudden spikes in variation. "
+            f"First occurred around {first_ooc_date}."
+        )
+
+    # High-variation band (between MR mean and UCL)
+    mr_mid = (mr_bar + ucl_mr) / 2.0
+    hits_high_band = int(((mr >= mr_mid) & (mr <= ucl_mr)).sum())
+
+    if hits_high_band >= 3:
+        bullets.append(
+            "- Several MR values fall in the high-variation band near the MR limit → "
+            "variation is trending upward."
+        )
+    else:
+        bullets.append(
+            "- Most MR values sit in the routine band → no strong evidence of increasing variation."
+        )
+
+    # Zero MR values (identical consecutive points)
+    zero_mr = int((mr == 0).sum())
+    if zero_mr > 0:
+        bullets.append(
+            f"- {zero_mr} zero-range value(s) (identical consecutive LQI points) → "
+            "worth checking for data or scoring artefacts."
+        )
+
+    return "\n".join(bullets)

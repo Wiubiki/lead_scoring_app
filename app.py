@@ -165,7 +165,49 @@ def render_sidebar():
     # Reports Button
     if st.sidebar.button("📄 Reports", key="nav-reports"):
         st.session_state["nav"] = "Reports"
+        st.session_state["reports_jump"] = None
         st.rerun()
+
+
+    st.sidebar.markdown("---")
+    st.sidebar.write(
+        "<h4 style='color: #ffffff;'>Tools & Resources</h4>",
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown(
+        """
+        <div style="margin-top: 0.5rem;">
+            <a href="https://xmrtool-standalone.streamlit.app/" target="_blank"
+            style="
+                color: #ddc507;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 0.95rem;
+            ">
+                XmR Control Chart Tool
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown(
+        """
+        <div style="margin-top: 0.5rem;">
+            <a href="https://github.com/Wiubiki/lead_scoring_app" target="_blank"
+            style="
+                color: #ddc507;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 0.95rem;
+            ">
+                Github Repository
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 
 
 

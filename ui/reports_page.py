@@ -11,6 +11,7 @@ from utils.advanced_analytics import (
     prepare_lqi_xmr_series,
     compute_xmr,
     xmr_interpretation,
+    mr_interpretation,
 )
 
 from ui.widgets.xmr_charts import render_xmr_chart
@@ -179,7 +180,14 @@ def load_data_for_runs(
 # -------------------------------------------------------------------
 
 def render_xmr_tab():
-    st.subheader("Lead Quality Index (XmR)")
+    st.subheader("Lead Quality Index - XmR charts")
+    # Short contextual explanation for the LQI metric
+    st.caption(
+        "The Lead Quality Index (LQI) is a weighted 0–10 score summarizing overall lead quality. "
+        "It reflects the mix of lead classes in each period. "
+        "[Learn more in the FAQ below 👇](#lqi-faq)"
+    )   
+
 
     df_ts = load_lead_quality_timeseries()
     if df_ts.empty or len(df_ts) < 2:
@@ -197,11 +205,23 @@ def render_xmr_tab():
 
     stats_q = compute_xmr(lqi_series)
 
-    st.markdown("### Lead Quality Index (LQI)")
     render_xmr_chart("Lead Quality Index (LQI) over time", dates, lqi_series, stats_q)
 
+    # ------------------------------------------------------
+    # INTERPRETATION (2 columns: X vs mR)
+    # ------------------------------------------------------
     st.markdown("### Interpretation")
-    st.markdown(xmr_interpretation(dates, lqi_series, stats_q))
+
+    col_x, col_mr = st.columns(2)
+
+    with col_x:
+        st.markdown("#### What the X chart tells us")
+        st.markdown(xmr_interpretation(dates, lqi_series, stats_q))
+
+    with col_mr:
+        st.markdown("#### What the mR chart tells us")
+        st.markdown(mr_interpretation(dates, lqi_series, stats_q))
+
 
 
 # -------------------------------------------------------------------
@@ -209,6 +229,8 @@ def render_xmr_tab():
 # -------------------------------------------------------------------
 
 def render_reports_page():
+    jump = st.session_state.get("reports_jump", None)
+
     st.markdown(
         "<h1 style='color: #006550; text-align: center;'>Reports</h1>",
         unsafe_allow_html=True,
@@ -438,10 +460,23 @@ def render_reports_page():
     # 8. Advanced Analytics (tabs) - BELOW everything else
     # ---------------------------------------------------------------
     st.markdown("---")
+    st.markdown('<a name="advanced-analytics"></a>', unsafe_allow_html=True)
+
     st.markdown(
         "<h2 style='color: #006550; text-align: center;'>Advanced Analytics</h2>",
         unsafe_allow_html=True,
     )
+    if jump == "advanced-analytics":
+        st.markdown(
+            """
+            <script>
+                const el = document.querySelector("a[name='advanced-analytics']");
+                if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+            </script>
+            """,
+            unsafe_allow_html=True,
+        )
+
 
     tab_xmr, tab_future = st.tabs(
         ["Lead Quality (XmR)", "More analytics (coming soon)"]
@@ -452,6 +487,100 @@ def render_reports_page():
 
     with tab_future:
         st.info("Additional analytics will appear here in future versions.")
+
+    # ------------------------------------------------------
+    # FAQ SECTION
+    # ------------------------------------------------------
+    st.markdown('<a name="lqi-faq"></a>', unsafe_allow_html=True)
+    st.markdown("### FAQ")
+
+    # 1. what are XmR charts
+    with st.expander("What are XmR charts, and why do we use them?"):
+        st.write(
+            """
+    **XmR charts** (Individuals and Moving Range charts) are simple, powerful tools  
+    used to understand whether a metric is behaving predictably over time.
+
+    - The **X chart** tracks the metric itself (here: LQI).
+    - The **mR chart** tracks how much the metric changes from one period to the next.
+
+    Together, they allow you to distinguish **routine variation** from **meaningful changes**.
+    """
+            )
+
+    # 2. How to read the X chart
+    with st.expander("How do I read the Individuals (X) chart?"):
+        st.write(
+            """
+    The X chart tells you about **changes in the level** of the process.
+
+    Key signals include:
+
+    1. **Points beyond the limits** → strong sign of a special-cause change.
+    2. **Runs of 8+ points on one side of the mean** → sustained level shift.
+    3. **Clusters near limits** → variation is increasing and stability may be weakening.
+    4. **No signals** → the process is stable and predictable.
+    """
+            )
+
+    # 3. How to read the mR chart
+    with st.expander("How do I read the Moving Range (mR) chart?"):
+        st.write(
+            """
+    The mR chart tells you about the **stability of variation**.
+
+    Look for:
+
+    1. **MR points above the MR limit** → sudden spikes in variation.
+    2. **Several MR values near the MR limit** → variation trending upward.
+    3. **Zero MR values** → identical consecutive values; may indicate data issues.
+    4. **Stable MR** → variation is routine, and X-chart limits are trustworthy.
+    """
+            )
+
+    # 4. What is the LQI
+    with st.expander("What is the Lead Quality Index (LQI), and how is it calculated?"):
+        st.write(
+            """
+    The LQI is a single score that summarizes the **quality mix** of leads  
+    in a given period on a scale from **0 to 10**.
+
+    We assign points as follows:
+
+    - Class 1 → **10 points**
+    - Class 2 → **6 points**
+    - Class 3 → **3 points**
+    - Class 4 → **0 points**
+
+    The formula:
+
+    **LQI = (10·C1 + 6·C2 + 3·C3 + 0·C4) / total_leads**
+
+    Higher LQI indicates stronger lead quality; lower LQI indicates lower-quality mix.
+    """
+            )
+
+    # 5. How many data points are needed
+    with st.expander("How many data points do I need for a reliable XmR chart?"):
+        st.write(
+            """
+    Guidelines:
+
+    - **8+ points** → minimum for meaningful limits.
+    - **12+ points** → reasonably stable and interpretable.
+    - **20+ points** → limits stabilize; signals become reliable.
+    - **30–50 points** → ideal for detecting subtle shifts.
+
+    More data improves limit stability and reduces false signals.
+    """
+            )
+
+
+
+
+
+
+
 
 
 # -------------------------------------------------------------------
