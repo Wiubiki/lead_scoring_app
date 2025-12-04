@@ -12,15 +12,18 @@ from utils.supabase_client import supabase
 def load_lead_quality_timeseries() -> pd.DataFrame:
     """
     Loads the aggregated lead quality metrics (1 row per period)
-    from lead_quality_timeseries.
+    from lead_quality_timeseries, including the new LQI metric.
     """
+
     resp = (
         supabase.table("lead_quality_timeseries")
         .select(
             "period_start, period_end, total_leads, "
-            "class_1_pct, class_2_pct, class_3_pct, class_4_pct"
+            "class_1_pct, class_2_pct, class_3_pct, class_4_pct, "
+            "class_1_count, class_2_count, class_3_count, class_4_count, "
+            "lqi"
         )
-        .order("period_end")
+        .order("period_start", desc=False)
         .execute()
     )
 
@@ -29,9 +32,34 @@ def load_lead_quality_timeseries() -> pd.DataFrame:
         return pd.DataFrame()
 
     df = pd.DataFrame(rows)
+
+    # ensure correct types
     df["period_start"] = pd.to_datetime(df["period_start"])
     df["period_end"] = pd.to_datetime(df["period_end"])
+    df["total_leads"] = df["total_leads"].astype(int)
+
+    # NEW: ensure LQI is float with precision
+    df["lqi"] = pd.to_numeric(df["lqi"], errors="coerce")
+
+    # Sort by period_start to enforce consistent XmR sequence
+    df = df.sort_values("period_start")
+
     return df
+
+# Prepare the LQI XmR input series #
+def prepare_lqi_xmr_series(df: pd.DataFrame) -> pd.Series:
+    """
+    Convert the full timeseries dataframe into the 1D LQI series
+    needed by the XmR engine (indexed by period_start).
+    """
+    if df.empty:
+        return pd.Series(dtype=float)
+
+    df = df.sort_values("period_start")
+    s = df.set_index("period_start")["lqi"].astype(float)
+    s = s.dropna()
+
+    return s
 
 
 # =====================================================

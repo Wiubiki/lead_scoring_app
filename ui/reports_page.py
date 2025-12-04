@@ -8,12 +8,12 @@ from utils.supabase_client import supabase
 
 from utils.advanced_analytics import (
     load_lead_quality_timeseries,
+    prepare_lqi_xmr_series,
     compute_xmr,
     xmr_interpretation,
 )
 
 from ui.widgets.xmr_charts import render_xmr_chart
-
 
 # -------------------------------------------------------------------
 # CONSTANTS
@@ -179,32 +179,29 @@ def load_data_for_runs(
 # -------------------------------------------------------------------
 
 def render_xmr_tab():
-    st.subheader("Lead Quality Over Time (XmR)")
+    st.subheader("Lead Quality Index (XmR)")
 
     df_ts = load_lead_quality_timeseries()
     if df_ts.empty or len(df_ts) < 2:
         st.info("Not enough periods in lead_quality_timeseries to compute XmR.")
         return
 
-    df_ts = df_ts.sort_values("period_end")
-    dates = df_ts["period_end"]
+    # Prepare LQI series for XmR
+    lqi_series = prepare_lqi_xmr_series(df_ts)
+    if lqi_series.empty or len(lqi_series) < 2:
+        st.info("Not enough valid LQI points to compute XmR.")
+        return
 
-    # CLASS 1 %
-    class1_pct = df_ts["class_1_pct"] * 100.0
-    stats_q = compute_xmr(class1_pct)
+    # For now we can use the index (period_start) as "dates" for the chart
+    dates = pd.Series(lqi_series.index)
 
-    st.markdown("### Class 1 %")
-    render_xmr_chart("Class 1 % over time", dates, class1_pct, stats_q)
+    stats_q = compute_xmr(lqi_series)
+
+    st.markdown("### Lead Quality Index (LQI)")
+    render_xmr_chart("Lead Quality Index (LQI) over time", dates, lqi_series, stats_q)
 
     st.markdown("### Interpretation")
-    st.markdown(xmr_interpretation(dates, class1_pct, stats_q))
-
-    # TOTAL LEADS
-    total_leads = df_ts["total_leads"].astype(float)
-    stats_n = compute_xmr(total_leads)
-
-    st.markdown("### Total Leads")
-    render_xmr_chart("Total leads per period", dates, total_leads, stats_n)
+    st.markdown(xmr_interpretation(dates, lqi_series, stats_q))
 
 
 # -------------------------------------------------------------------

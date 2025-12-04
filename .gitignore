@@ -34,7 +34,8 @@ output_files/
 deprecated/
 
 # Ignore Streamlit temporary files
-.streamlit/
+.streamlit/secrets.toml
+!.streamlit/config.toml
 
 # Ignore Jupyter notebook checkpoints if applicable
 .ipynb_checkpoints/
