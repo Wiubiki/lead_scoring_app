@@ -105,12 +105,55 @@ def main():
             st.markdown("## DreamClass Lead Scoring App")
             st.caption("Read-only access")
 
+        render_tools_block()
         render_reports()
 
 
 # -------------------------------------------------------------------
 # SIDEBAR NAVIGATION 
 # -------------------------------------------------------------------
+
+# Tools section helper function
+def render_tools_block():
+    st.sidebar.markdown("---")
+    st.sidebar.write(
+        "<h4 style='color: #ffffff;'>Tools & Resources</h4>",
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown(
+        """
+        <div style="margin-top: 0.5rem;">
+            <a href="https://xmrtool-standalone.streamlit.app/" target="_blank"
+            style="
+                color: #ddc507;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 0.95rem;
+            ">
+                XmR Control Chart Tool
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown(
+        """
+        <div style="margin-top: 0.5rem;">
+            <a href="https://github.com/Wiubiki/lead_scoring_app" target="_blank"
+            style="
+                color: #ddc507;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 0.95rem;
+            ">
+                Github Repository
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_sidebar():
     # Read unified wizard state
     current_step = st.session_state.get("wizard_current_step", 0)
@@ -168,48 +211,7 @@ def render_sidebar():
         st.session_state["reports_jump"] = None
         st.rerun()
 
-
-    st.sidebar.markdown("---")
-    st.sidebar.write(
-        "<h4 style='color: #ffffff;'>Tools & Resources</h4>",
-        unsafe_allow_html=True,
-    )
-    st.sidebar.markdown(
-        """
-        <div style="margin-top: 0.5rem;">
-            <a href="https://xmrtool-standalone.streamlit.app/" target="_blank"
-            style="
-                color: #ddc507;
-                text-decoration: none;
-                font-weight: 600;
-                font-size: 0.95rem;
-            ">
-                XmR Control Chart Tool
-            </a>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.sidebar.markdown(
-        """
-        <div style="margin-top: 0.5rem;">
-            <a href="https://github.com/Wiubiki/lead_scoring_app" target="_blank"
-            style="
-                color: #ddc507;
-                text-decoration: none;
-                font-weight: 600;
-                font-size: 0.95rem;
-            ">
-                Github Repository
-            </a>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-
-
+    render_tools_block()
 
 # -------------------------------------------------------------------
 if __name__ == "__main__":

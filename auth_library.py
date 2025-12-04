@@ -42,7 +42,7 @@ def require_auth():
     # ------------------------------------------
     # 🎨 Styled Login Box (your original styling hook)
     # ------------------------------------------
-    login_container = st.container(key="login-box")  # <--- styling key retained
+    login_container = st.container(key="login-box")  # styling key retained
 
     with login_container:
         with st.form("login_form", clear_on_submit=False):
@@ -66,12 +66,12 @@ def require_auth():
             st.session_state["username"] = username
             st.session_state["is_admin"] = username in ADMIN_USERS
 
-            st.success(f"Logged in as **{username}**")
+            # No success message -> go straight to app
             st.rerun()
         else:
             st.error("Invalid credentials.")
-            # stay on page
-            return
+            # stay on page and do not rerun
+            st.stop()
 
     # ------------------------------------------
     # Halt execution until login completes

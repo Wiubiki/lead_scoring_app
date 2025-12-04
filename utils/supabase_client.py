@@ -6,6 +6,8 @@ from supabase import create_client, Client
 
 SUPABASE_URL = st.secrets["supabase"]["url"]
 SUPABASE_SERVICE_KEY = st.secrets["supabase"]["service_key"]
+ENV = st.secrets["supabase"].get("env", "unknown")
+BUCKET_NAME = st.secrets["supabase"]["scoring_bucket"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
@@ -19,7 +21,6 @@ def save_scoring_run(
     scored_df: pd.DataFrame,
     period_start: dt.date,
     period_end: dt.date,
-    env: str = "nightly",
     created_by: str = "admin_results_page",
 ) -> dict:
     """
@@ -46,7 +47,6 @@ def save_scoring_run(
     # -----------------------------
     # Build file_key
     # -----------------------------
-    bucket_name = "scoring-runs-nightly"
     file_key = f"full/{year_str}/{start_str}__{end_str}.parquet"
 
     # -----------------------------
@@ -67,7 +67,7 @@ def save_scoring_run(
     # -----------------------------
     # Upload parquet to storage
     # -----------------------------
-    supabase.storage.from_(bucket_name).upload(
+    supabase.storage.from_(BUCKET_NAME).upload(
         path=file_key,
         file=file_bytes,
         file_options={"upsert": "true"},
@@ -77,7 +77,7 @@ def save_scoring_run(
     # Upsert metadata row in scoring_runs (retrieve row)
     # -----------------------------
     payload = {
-        "env": env,
+        "env": ENV,
         "data_type": "full",
         "period_start": start_str,
         "period_end": end_str,
