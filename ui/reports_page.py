@@ -15,12 +15,7 @@ from utils.advanced_analytics import (
 )
 
 from ui.widgets.xmr_charts import render_xmr_chart
-
-# -------------------------------------------------------------------
-# CONSTANTS
-# -------------------------------------------------------------------
-
-BUCKET_NAME = "scoring-runs-nightly"  # Supabase Storage bucket
+from utils.supabase_client import bucket_name as BUCKET_NAME
 
 
 # -------------------------------------------------------------------
