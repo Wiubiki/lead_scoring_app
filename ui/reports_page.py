@@ -15,7 +15,7 @@ from utils.advanced_analytics import (
 )
 
 from ui.widgets.xmr_charts import render_xmr_chart
-from utils.supabase_client import bucket_name as BUCKET_NAME
+from utils.supabase_client import BUCKET_NAME
 
 
 # -------------------------------------------------------------------
