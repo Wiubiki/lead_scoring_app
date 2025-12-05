@@ -1,0 +1,148 @@
+/* entire page background */
+[data-testid="stAppViewContainer"] {
+    background: var(--app-bg) !important;
+}
+
+.stApp > header {
+    background-color: transparent;
+}
+
+/* H1 & H3 in login page */
+.stHeading h1 {
+    color:#ffffff;
+    text-align: center;
+}
+
+.stHeading h3 {
+    color:#ffffff;
+    text-align: center;
+}
+
+/* Login Box */
+
+.st-key-login-box {
+    width: 350px;
+    margin: 0 auto;
+    background-color: white;
+    border-radius: 8px;
+}
+
+.stFormSubmitButton button {
+    background-color: #006550;
+    color:#ffffff;
+}
+
+/* Sidebar Background with Gradient */
+/* Sidebar background gradient */
+[data-testid="stSidebar"] > div:first-child {
+    background: linear-gradient(180deg, #05a988 0%, #00241e 100%) !important;
+}
+
+/* Ensure the sidebar takes the full height */
+[data-testid="stSidebar"] {
+    background: transparent !important;
+}
+
+/* Optional: make header text visible on gradient */
+.st-key-sidebar-header h2,
+.st-key-sidebar-header .version-badge {
+    color: white !important;
+}
+
+/* Optional: Stepper buttons against dark background */
+[data-testid="stSidebar"] .stButton > button {
+    background-color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #000000;
+}
+
+[data-testid="stSidebar"] .stButton > button:disabled {
+    opacity: 0.45;
+    color: #e5e5e5;
+}
+
+[data-testid="stSidebar"] .stButton > button:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+.stSidebarHeader {
+    background-color: transparent;
+}
+
+/* Sidebar App Name */
+.st-key-sidebar-header h2 {
+    color: #1a1a1a;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+/* Version Badge */
+.version-badge {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* Base Step Button */
+.stButton > button {
+    width: 100%;
+    text-align: left;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* ACTIVE STEP */
+.st-key-sidebar-step-1 button,
+.st-key-sidebar-step-2 button,
+.st-key-sidebar-step-3 button {
+    background-color: #eeeeee;
+}
+
+/* ACTIVE COLOR OVERRIDE */
+.st-key-sidebar-step-1[data-step-status="active"] button,
+.st-key-sidebar-step-2[data-step-status="active"] button,
+.st-key-sidebar-step-3[data-step-status="active"] button {
+    background-color: #006550;
+    color: white;
+}
+
+/* COMPLETED (CHECKMARK) */
+.st-key-sidebar-step-1[data-step-status="done"] button::after,
+.st-key-sidebar-step-2[data-step-status="done"] button::after,
+.st-key-sidebar-step-3[data-step-status="done"] button::after {
+    content: "✓";
+    float: right;
+    color: #006550;
+    font-weight: bold;
+}
+
+/* LOCKED */
+button[disabled] {
+    opacity: 0.4;
+}
+
+
+.stMultiSelect span {
+    max-width: 200px;
+}
+
+#reports-summary-row {
+    padding: 8px;
+    background: linear-gradient(180deg, #05a988 0%, #00241e 100%) !important;
+    border-radius: 8px;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: center;
+}
+
+#lead-quality-index-xmr-charts {
+    color:#000000;
+}
+
+#interpretation {
+    text-align:center;
+}
+
+.h4 {
+    color:#ffffff;
+}

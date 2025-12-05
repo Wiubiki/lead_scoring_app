@@ -25,14 +25,17 @@ test_env/
 *.tmp
 *.bak
 *.swp
+*.csv
 .DS_Store
 
-# Ignore input and output data folders
+# Ignore deprecated, input and output data folders
 input_files/
 output_files/
+deprecated/
 
 # Ignore Streamlit temporary files
-.streamlit/
+.streamlit/secrets.toml
+!.streamlit/config.toml
 
 # Ignore Jupyter notebook checkpoints if applicable
 .ipynb_checkpoints/
@@ -43,3 +46,5 @@ desktop.ini
 
 # Ignore submodule
 app_sensitivefiles/*
+
+

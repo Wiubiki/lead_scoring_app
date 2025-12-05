@@ -4,7 +4,7 @@
 import pandas as pd
 
 # Import scoring functions from scoring_functions.py
-from scoring_functions import (
+from scoring.scoring_functions import (
     email_domain_score,
     organization_name_score,
     email_username_score,
