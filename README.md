@@ -1,141 +1,114 @@
 # Lead Scoring App
 
-The Lead Scoring App is a fully functional MVP designed to streamline the lead scoring process by integrating data from Google Analytics (GA4) and DreamClass. The app provides features for automated data retrieval, scoring, and summary report generation.
+The Lead Scoring App is a full-featured Streamlit application that automates lead quality assessment by integrating and scoring data from Google Analytics (GA4) and DreamClass. The application provides end-to-end functionality for data retrieval, scoring, reporting, advanced analytics, and longitudinal evaluation of lead quality.
 
----
+This version (v3.1.0) introduces a redesigned architecture, new Advanced Analytics features (including XmR control charts and the Lead Quality Index), a production-grade Supabase integration, and full environment segregation between nightly and production deployments.
 
+--- 
 ## Table of Contents
-1. [Features](#features)
-2. [Technologies Used](#technologies-used)
-3. [Setup Instructions](#setup-instructions)
-   - [Clone the Repository](#clone-the-repository)
-   - [Install Dependencies](#install-dependencies)
-   - [Handle Sensitive Files](#handle-sensitive-files)
-   - [Run the App Locally](#run-the-app-locally)
-4. [Deployment](#deployment)
-   - [Streamlit Community Cloud](#streamlit-community-cloud)
-5. [Troubleshooting](#troubleshooting)
+1. Features
+2. Architecture Overview
+3. Environments (Nightly & Production)
+4. Technologies Used
+5. Setup Instructions
+6. Deployment (Streamlit Cloud)
+7. Redirect Handling for Legacy Deployment
+8. Troubleshooting
 
----
+--- 
+## 1. Features
+### Automated Data Retrieval
+- Fetches and prepares data from GA4 and DreamClass APIs.
+- Supports periodic scoring runs.
 
-## Features
-- **Data Retrieval**: 
-  - Fetches data from Google Analytics and DreamClass APIs.
-  - Supports both manual uploads and API-based synchronization.
-- **Lead Scoring**:
-  - Processes data to assign lead scores based on custom criteria.
-  - Provides detailed filtering and sorting options for scored leads.
-- **Report Generation**:
-  - Generates summary reports with customizable date ranges and grouping dimensions.
-  - Includes download options for CSV files.
-- **Authentication**:
-  - Secures app access with user authentication.
+### Lead Scoring Engine
+- Vectorized scoring logic.
+- Exportable run outputs.
 
----
+### Reporting
+- Historical scoring run summaries.
+- Class distribution tracking.
 
-## Technologies Used
-- **Backend**: Python
-- **Frontend**: Streamlit
-- **APIs**: Google Analytics Data API, DreamClass API
-- **Libraries**: 
-  - `pandas`, `numpy`, `matplotlib` for data processing and visualization.
-  - `bcrypt` for authentication.
-  - `streamlit` for app development.
+### Advanced Analytics
+- XmR control charts for lead quality stability.
+- LQI (Lead Quality Index) generated at database level.
+- Interpretation & FAQ.
 
----
+### Authentication Modes
+- Admin: full scoring + reports.
+- Non-admin: read-only access.
 
-## Setup Instructions
+### Environment Separation
+- Distinct Supabase projects for nightly and production.
 
-### Clone the Repository
-1. Clone the main repository:
-   ```bash 
-   git clone https://github.com/yourusername/lead_scoring_app.git
-   cd lead_scoring_app
-   ```
+--- 
+## 2. Architecture Overview
+lead_scoring_app/
+│
+├── app.py
+├── ui/
+│   ├── scoring_page.py
+│   ├── results_page.py
+│   ├── reports_page.py
+│   └── widgets/xmr_charts.py
+├── utils/
+│   ├── supabase_client.py
+│   ├── advanced_analytics.py
+├── scoring/
+├── assets/
+└── src/app.py  (legacy redirect app)
 
-2. Initialize and update the submodule for sensitive files:
-   ```bash
-   git submodule update --init --recursive
-   ```
+--- 
+## 3. Environments
 
-### Install Dependencies
-1. Create a virtual environment:
-   ```bash
-   python3 -m venv lead_scoring_env
-   source lead_scoring_env/bin/activate  # Linux/MacOS
-   lead_scoring_env\Scripts\activate    # Windows
-   ```
+### Nightly
+[supabase]
+url="https://<nightly>.supabase.co"
+service_key="<nightly>"
+scoring_bucket="scoring-runs-nightly"
+env="nightly"
 
-2. Install required packages:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Production
+[supabase]
+url="https://<prod>.supabase.co"
+service_key="<prod>"
+scoring_bucket="scoring-runs-production"
+env="production"
 
-### Handle Sensitive Files
-The app requires a `secrets.toml` file to function properly. This file is stored securely in the `app_sensitive_files` submodule.
+--- 
+## 4. Technologies
+Streamlit, Supabase, Plotly, pandas, numpy, GA4 API.
 
-1. Create a symlink to the `secrets.toml` file:
-   ```bash
-   ln -s ../app_sensitive_files/.streamlit/secrets.toml .streamlit/secrets.toml
-   ```
+--- 
+## 5. Setup
 
-2. Verify the symlink:
-   ```bash
-   realpath .streamlit/secrets.toml
-   ```
+### Clone repo
+git clone <repo>
+cd lead_scoring_app
 
-3. If using an absolute path for the symlink:
-   ```bash
-   ln -s /absolute/path/to/app_sensitive_files/.streamlit/secrets.toml .streamlit/secrets.toml
-   ``` 
+### Install dependencies
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
-### Run the App Locally
-1. Activate your virtual environment:
-   ```bash
-   source lead_scoring_env/bin/activate  # Linux/MacOS
-   ```
+### Add secrets
+Create .streamlit/secrets.toml with environment-specific Supabase credentials.
 
-2. Run the Streamlit app:
-   ```bash 
-   streamlit run src/app.py
-   ```
+### Run
+streamlit run app.py
 
----
+--- 
+## 6. Deployment
+- Nightly deploy uses dev branch + nightly secrets.
+- Production deploy uses main branch + production secrets.
+- Legacy app uses src/app.py redirect.
 
-## Deployment
+--- 
+## 7. Redirect Handling
+Old Streamlit deployment still active and redirects to new production app.
 
-### Streamlit Community Cloud
-1. **Set up Secrets**:  
-   Configure the Google Analytics credentials and other sensitive data in the **Secrets Management** section of the Streamlit Community Cloud platform.
-
-2. **Push to Main Branch**:  
-   The deployment is linked to the main branch. Ensure all updates are pushed to `main`:
-   ```bash
-   git checkout main
-   git merge dev
-   git push origin main
-   ```
-
-3. The app will automatically update on Streamlit Community Cloud.
-
----
-
-## Troubleshooting
-
-### Common Errors and Fixes
-1. **"No secrets found"**:
-   - Ensure the `secrets.toml` symlink is correctly configured.
-   - Confirm the `app_sensitive_files` submodule is initialized and updated.
-
-2. **Google Analytics Data Retrieval Fails**:
-   - Verify that the Google Analytics API is enabled.
-   - Check the credentials in `secrets.toml`.
-
-3. **Symbolic Link Issues**:
-   - Use absolute paths if relative paths are not resolving correctly.
-
-4. **Data Parsing Errors**:
-   - Check the raw data format for inconsistencies.
-   - Update parsing logic in `dreamclass_data_handler.py` if needed.
-
----
+--- 
+## 8. Troubleshooting
+500 errors: usually Supabase outage or wrong URL.
+Missing secrets: ensure proper [supabase] block.
+XmR errors: ensure numeric data and plotly installed.
