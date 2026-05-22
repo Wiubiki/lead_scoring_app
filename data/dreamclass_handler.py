@@ -58,7 +58,25 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
     request_url = f"{endpoint}?statuses={','.join(use_statuses)}"
 
     # 3) Fetch (GET)
-    resp = requests.get(request_url, headers=headers, timeout=30)
+    session = requests.Session()
+
+    login_resp = session.post(
+        login_url,
+        headers=login_headers,
+        json={
+            "username": username,
+            "password": password,
+        },
+        timeout=30,
+    )
+    login_resp.raise_for_status()
+
+    resp = session.get(
+        request_url,
+        headers=data_headers,
+        timeout=30,
+    )
+    resp.raise_for_status()
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
