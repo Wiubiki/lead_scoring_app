@@ -34,31 +34,48 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
     """
     import json, ast
 
-    # 1) Secrets & request setup (use your existing keys verbatim)
+    # 1) Secrets & request setup
     def _secrets():
         try:
             import streamlit as st
             return dict(st.secrets).get("dreamclass_api", {})
         except Exception:
             return {}
+
     cfg = _secrets()
+
     endpoint = (base_url or cfg.get("base_url", "")).strip()
+    login_url = cfg.get("login_url", "").strip()
+    username = cfg.get("username", "").strip()
+    password = cfg.get("password", "").strip()
+    additional_data = cfg.get("additional_data", "").strip()
+
     if not endpoint:
         raise RuntimeError("[DC_norm] Missing dreamclass_api.base_url in secrets.toml")
 
-    raw_headers = cfg.get("auth_headers", "{}")
-    try:
-        headers = json.loads(raw_headers)
-    except Exception:
-        headers = {}
-    headers.setdefault("Accept", "application/json")
+    if not login_url:
+        raise RuntimeError("[DC_norm] Missing dreamclass_api.login_url in secrets.toml")
 
-    # 2) Statuses (hardcoded defaults unless explicitly passed)
+    if not username or not password:
+        raise RuntimeError("[DC_norm] Missing DreamClass username/password in secrets.toml")
+
+    if not additional_data:
+        raise RuntimeError("[DC_norm] Missing dreamclass_api.additional_data in secrets.toml")
+
+    # 2) Statuses
     use_statuses = DEFAULT_STATUSES if statuses is None else list(statuses)
     request_url = f"{endpoint}?statuses={','.join(use_statuses)}"
 
-    # 3) Fetch (GET)
+    # 3) Login and fetch data using the returned JSESSIONID cookie
     session = requests.Session()
+
+    login_headers = {
+        "Accept": "application/json, text/plain, */*",
+        "Content-Type": "application/json",
+        "X-DC-ADDITIONAL-DATA": additional_data,
+        "Origin": "https://panel.dreamclass.io",
+        "Referer": "https://panel.dreamclass.io/",
+    }
 
     login_resp = session.post(
         login_url,
@@ -69,22 +86,41 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
         },
         timeout=30,
     )
-    login_resp.raise_for_status()
+
+    try:
+        login_resp.raise_for_status()
+    except requests.HTTPError as e:
+        raise RuntimeError(
+            f"[DC_norm] DreamClass login failed: {e}\n"
+            f"URL: {login_resp.request.url}\n"
+            f"Status: {login_resp.status_code}\n"
+            f"Body: {login_resp.text[:500]}"
+        ) from e
+
+    data_headers = {
+        "Accept": "application/json, text/plain, */*",
+        "X-DC-ADDITIONAL-DATA": additional_data,
+        "Origin": "https://panel.dreamclass.io",
+        "Referer": "https://panel.dreamclass.io/",
+    }
 
     resp = session.get(
         request_url,
         headers=data_headers,
         timeout=30,
     )
-    resp.raise_for_status()
+
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
         raise RuntimeError(
             f"[DC_norm] HTTP error while fetching DreamClass accounts: {e}\n"
-            f"URL: {resp.request.url}\nStatus: {resp.status_code}\nBody: {resp.text[:500]}"
+            f"URL: {resp.request.url}\n"
+            f"Status: {resp.status_code}\n"
+            f"Body: {resp.text[:500]}"
         ) from e
 
+    # 4) Parse response into DataFrame
     raw = resp.json()
     if isinstance(raw, dict) and "data" in raw:
         raw = raw["data"]
@@ -92,7 +128,17 @@ def fetch_and_clean(base_url: str | None = None, statuses=None) -> pd.DataFrame:
     df = pd.DataFrame(raw)
     if df.empty:
         # return empty but correctly-shaped frame (keeps UI from exploding)
-        empty = pd.DataFrame(columns=["userId","email","name","organization","adminLogins","status","createdAt"])
+        empty = pd.DataFrame(
+            columns=[
+                "userId",
+                "email",
+                "name",
+                "organization",
+                "adminLogins",
+                "status",
+                "createdAt",
+            ]
+        )
         return validate_dc_columns(empty)
 
     # 4) Clean exactly like the old cleaner
